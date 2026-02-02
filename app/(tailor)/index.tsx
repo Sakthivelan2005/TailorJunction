@@ -1,6 +1,6 @@
 // app/tailors.js (or .tsx)
-import { Link } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { Link } from "expo-router";
+import { StyleSheet, Text, View } from "react-native";
 
 export default function TailorsScreen() {
   return (
@@ -12,6 +12,6 @@ export default function TailorsScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    text: { fontSize: 20, marginBottom: 10 }
+  container: { flex: 1, justifyContent: "center", alignItems: "center" },
+  text: { fontSize: 20, marginBottom: 10 },
 });
