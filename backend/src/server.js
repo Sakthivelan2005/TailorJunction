@@ -1,12 +1,16 @@
 const express = require("express");
 const cors = require("cors");
 const { signup, verifyOtp } = require("./authController");
-
+const db = require("./db");
 const app = express();
 
 // Middleware - ALL require()
 app.use(cors());
 app.use(express.json());
+
+db.query("SELECT 1")
+  .then(() => console.log("✅ MySQL Connected via Workbench credentials"))
+  .catch((err) => console.log("❌ DB Connection Failed:", err));
 
 // Test route
 app.get("/api/test", (req, res) => {
