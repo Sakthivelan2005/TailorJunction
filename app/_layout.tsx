@@ -38,6 +38,11 @@ export default function RootLayout() {
                 name="modal"
                 options={{ presentation: "modal", title: "Modal" }}
               />
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="signup" />
+                <Stack.Screen name="login" />
+                <Stack.Screen name="Verification" />
+              </Stack>
             </Stack>
             <StatusBar style="auto" />
           </ThemeProvider>

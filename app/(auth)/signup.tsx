@@ -250,7 +250,7 @@ const SignUpScreen = () => {
           <View
             style={{ flexDirection: "row", justifyContent: "center", gap: 4 }}
           >
-            <ThemedText>Already have an account</ThemedText>
+            <ThemedText>Already have an account?</ThemedText>
             <TouchableOpacity onPress={handleBackToLogin}>
               <ThemedText style={{ fontWeight: "600" }}>Log in</ThemedText>
             </TouchableOpacity>
