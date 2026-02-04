@@ -1,7 +1,5 @@
-// hooks/useToast.ts - FIXED POSITIONING
 import { CustomToast } from "@/components/CustomToast";
 import React, { createContext, ReactNode, useContext, useState } from "react";
-import { View } from "react-native";
 
 interface Toast {
   id: string;
@@ -42,27 +40,16 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({
   return (
     <ToastContext.Provider value={{ showToast, toasts }}>
       {children}
-      {/* ✅ ABSOLUTE TOAST OVERLAY */}
-      <View
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: 9999,
-        }}
-      >
-        {toasts.map((toast, index) => (
-          <CustomToast
-            key={toast.id}
-            message={toast.message}
-            type={toast.type}
-            onClose={() => removeToast(toast.id)}
-            index={index}
-          />
-        ))}
-      </View>
+      {/* ✅ FIXED: Small overlay ONLY at bottom - NO full screen block */}
+      {toasts.map((toast, index) => (
+        <CustomToast
+          key={toast.id}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => removeToast(toast.id)}
+          index={index}
+        />
+      ))}
     </ToastContext.Provider>
   );
 };

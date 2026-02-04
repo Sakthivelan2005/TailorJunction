@@ -28,21 +28,23 @@ export default function RootLayout() {
           >
             <Stack>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="(customer)"
-                options={{ headerShown: false }}
-              />
               <Stack.Screen name="index" options={{ headerShown: false }} />
               <Stack.Screen name="home" options={{ headerShown: false }} />
               <Stack.Screen
                 name="modal"
                 options={{ presentation: "modal", title: "Modal" }}
               />
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="signup" />
-                <Stack.Screen name="login" />
-                <Stack.Screen name="Verification" />
-              </Stack>
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="(customer)"
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen name="(tailor)" options={{ headerShown: false }} />
+              <Stack.Screen name="login" options={{ title: "login" }} />
+              <Stack.Screen
+                name="Verification"
+                options={{ title: "Verification" }}
+              />
             </Stack>
             <StatusBar style="auto" />
           </ThemeProvider>

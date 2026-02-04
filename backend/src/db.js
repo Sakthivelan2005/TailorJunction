@@ -1,15 +1,30 @@
+// Load .env variables FIRST
+require("dotenv").config();
+
 const mysql = require("mysql2");
 
-// Create a connection pool (better for performance than a single connection)
+// Use process.env from .env
 const pool = mysql.createPool({
-  host: "127.0.0.1", // Replace with your DB host if not local
-  user: "root", // Your MySQL Workbench username
-  password: "1234", // Your MySQL Workbench password
-  database: "ecommerce", // Name of the schema created in Workbench
+  host: process.env.DB_HOST || "127.0.0.1",
+  user: process.env.DB_USER || "root",
+  password: process.env.DB_PASSWORD || "",
+  database: process.env.DB_NAME || "ecommerce",
+  port: process.env.PORT || 3306, // ✅ Added PORT
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
 });
 
-// Export the pool to use it in other files
+// TEST CONNECTION
+pool
+  .promise()
+  .execute("SELECT 1 as connected")
+  .then(() => {
+    console.log("✅ MySQL Connected Successfully!");
+  })
+  .catch((err) => {
+    console.error("❌ MySQL Connection Failed:", err.message);
+  });
+
+// Export promise version for async/await
 module.exports = pool.promise();

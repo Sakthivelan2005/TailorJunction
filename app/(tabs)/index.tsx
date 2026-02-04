@@ -23,5 +23,5 @@ export default function Index() {
     );
   }
 
-  return <Redirect href="/(customer)/Home" />;
+  return <Redirect href="/home" />;
 }

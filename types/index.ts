@@ -13,6 +13,7 @@ export interface AuthContextType {
   setPassword: (password: string) => void;
   currentStep: "login" | "verification" | "signup" | "home";
   setCurrentStep: (step: AuthContextType["currentStep"]) => void;
+  checkPhoneExists: (phone: string) => Promise<boolean>;
 
   // MySQL integration
   userId?: string;

@@ -83,7 +83,26 @@ const verifyOtp = async (req, res) => {
   }
 };
 
+const checkPhoneExists = async (req, res) => {
+  try {
+    const { phone } = req.body;
+
+    // Check customers table
+    const [customers] = await pool.execute(
+      "SELECT user_id FROM users WHERE phone = ?",
+      [phone],
+    );
+
+    const exists = customers.length > 0;
+
+    res.json({ exists });
+  } catch (error) {
+    res.status(500).json({ error: "Phone check failed" });
+  }
+};
+
 module.exports = {
   signup,
+  checkPhoneExists,
   verifyOtp,
 };

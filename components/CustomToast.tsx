@@ -3,10 +3,10 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import React from "react";
 import {
-    Animated,
-    Dimensions,
-    StyleSheet,
-    TouchableOpacity,
+  Animated,
+  Dimensions,
+  StyleSheet,
+  TouchableOpacity,
 } from "react-native";
 
 interface ToastProps {
@@ -81,6 +81,7 @@ const styles = StyleSheet.create({
   toastContainer: {
     position: "absolute",
     left: 20,
+    top: 10,
     right: 20,
     zIndex: 9999, // ✅ FRONT Z-INDEX
     elevation: 999, // ✅ ANDROID Z-INDEX

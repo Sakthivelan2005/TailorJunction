@@ -1,10 +1,12 @@
+// app/(auth)/login.tsx - ✅ NO API CALLS - LOCAL PHONE CHECK
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/AuthContext";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -15,35 +17,86 @@ import {
 } from "react-native";
 
 const LoginScreen = () => {
-  const { phoneNumber, setPhoneNumber, setCurrentStep, sendVerificationCode } =
-    useAuth();
+  const {
+    phoneNumber,
+    setPhoneNumber,
+    sendVerificationCode,
+    checkPhoneExists,
+  } = useAuth();
 
   const [errors, setErrors] = useState<{ phone?: string }>({});
+  const [checkingPhone, setCheckingPhone] = useState(false);
+  const [phoneExists, setPhoneExists] = useState<boolean | null>(null);
+  const [registeredUsers, setRegisteredUsers] = useState<string[]>([]); // Local storage
   const colorScheme = useColorScheme();
   const colors = Colors["light"];
 
+  // ✅ CHECK PHONE WHEN IT CHANGES (LOCAL - NO API)
+  useEffect(() => {
+    const checkPhone = () => {
+      const cleanPhone = phoneNumber.replace(/\D/g, "");
+
+      if (cleanPhone.length === 10) {
+        setCheckingPhone(true);
+
+        // ✅ LOCAL CHECK - No API call
+        setTimeout(async () => {
+          const exists = await checkPhoneExists(phoneNumber);
+          console.log("🔍 LOCAL CHECK:", cleanPhone, "exists:", exists);
+          setPhoneExists(exists);
+          setCheckingPhone(false);
+        }, 800); // Simulate network delay
+      } else {
+        setPhoneExists(null);
+      }
+    };
+
+    const timeoutId = setTimeout(checkPhone, 500);
+    return () => clearTimeout(timeoutId);
+  }, [phoneNumber]);
+
   const validatePhone = () => {
     const cleanPhone = phoneNumber.replace(/\D/g, "");
-    if (cleanPhone.length < 10) {
-      setErrors({ phone: "Please enter a valid phone number" });
+    console.log("cleanPhone:", cleanPhone.slice(0, 10));
+    if (cleanPhone.length !== 10) {
+      setErrors({ phone: "Enter valid 10-digit phone number" });
       return false;
     }
     setErrors({});
     return true;
   };
 
-  const handleContinue = () => {
-    if (validatePhone()) {
-      sendVerificationCode("+91" + phoneNumber);
-      setCurrentStep("verification");
-      router.navigate("/(auth)/Verification");
+  const handleContinue = async () => {
+    if (!validatePhone()) return;
+
+    if (checkingPhone) return;
+
+    if (phoneExists === null) {
+      setErrors({ phone: "Checking phone number..." });
+      return;
+    }
+
+    if (phoneExists === true) {
+      // ✅ EXISTING USER → SEND OTP
+      console.log("✅ Account found! Sending OTP...");
+      await sendVerificationCode(phoneNumber);
+      router.push("/(auth)/Verification");
+    } else {
+      // ✅ NEW USER → SIGNUP
+      setErrors({ phone: "No account found. Please sign up first!" });
+      // Auto-redirect to signup after 2s
+      setTimeout(() => {
+        router.push("/(auth)/signup");
+      }, 1000 * 60);
     }
   };
 
-  const formatPhoneInput = (value: string) => {
+  const formatPhoneInput = (value: string): string => {
     const cleaned = value.replace(/\D/g, "");
-    const formatted = cleaned.replace(/(\d{5})(\d{5})/, "$1 $2 $3");
-    return formatted.slice(0, 11);
+    if (cleaned.length <= 5) return cleaned;
+    if (cleaned.length <= 10)
+      return `${cleaned.slice(0, 5)} ${cleaned.slice(5)}`;
+    return `${cleaned.slice(0, 5)} ${cleaned.slice(5, 10)}`;
   };
 
   return (
@@ -51,91 +104,141 @@ const LoginScreen = () => {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={{ flex: 1 }}
     >
-      <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
-        bounces={false}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }} bounces={false}>
         <ThemedView
           style={{ flex: 1, padding: 20, justifyContent: "space-between" }}
         >
           {/* Header */}
           <View style={{ marginTop: 40 }}>
-            <ThemedText style={{ marginBottom: 20 }}>
-              Please confirm your country code and enter your phone number.
+            <ThemedText
+              style={{ fontSize: 24, fontWeight: "bold", marginBottom: 8 }}
+            >
+              Welcome Back
             </ThemedText>
-
-            {/* Country Picker */}
-            <ThemedText style={{ marginBottom: 8 }}>Country</ThemedText>
+            <ThemedText>Enter your phone number to continue</ThemedText>
 
             {/* Phone Number Input */}
-            <ThemedText style={{ marginTop: 20, marginBottom: 8 }}>
-              Phone Number
+            <ThemedText style={{ marginTop: 32, marginBottom: 8 }}>
+              Phone Number (+91)
             </ThemedText>
             <View style={{ flexDirection: "row", gap: 8 }}>
               <View
                 style={{
                   paddingHorizontal: 12,
-                  paddingVertical: 10,
+                  paddingVertical: 12,
                   borderWidth: 1,
-                  borderColor: colors.tabIconSelected,
+                  borderColor: colors.tabIconDefault,
                   borderRadius: 8,
-                  backgroundColor: colors.background,
-                  justifyContent: "center",
+                  backgroundColor: colors.tint,
                 }}
               >
-                <ThemedText>{"+91"}</ThemedText>
+                <ThemedText style={{ fontWeight: "600" }}>+91</ThemedText>
               </View>
               <TextInput
-                placeholder="00000-00000"
-                value={phoneNumber}
-                onChangeText={(text) => setPhoneNumber(formatPhoneInput(text))}
+                placeholder="73054 18555"
+                value={formatPhoneInput(phoneNumber)}
+                onChangeText={(text) => {
+                  const cleanNumber = text.replace(/\D/g, "");
+                  setPhoneNumber(cleanNumber.slice(0, 10));
+                }}
                 keyboardType="phone-pad"
+                maxLength={14}
+                editable={!checkingPhone}
                 style={{
                   flex: 1,
                   paddingHorizontal: 12,
-                  paddingVertical: 10,
+                  paddingVertical: 12,
                   borderWidth: 1,
                   borderColor: errors.phone
-                    ? colors.tabIconSelected
-                    : colors.tabIconDefault,
+                    ? "#EF4444"
+                    : checkingPhone
+                      ? "#F59E0B"
+                      : colors.tabIconDefault,
                   borderRadius: 8,
                   backgroundColor: colors.background,
-                  fontSize: 14,
+                  fontSize: 16,
                 }}
                 placeholderTextColor={colors.tint}
               />
             </View>
+
+            {/* Status Messages */}
+            {checkingPhone && (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginTop: 8,
+                  gap: 8,
+                }}
+              >
+                <ActivityIndicator size="small" color="#F59E0B" />
+                <ThemedText style={{ color: "#F59E0B" }}>
+                  Checking phone number...
+                </ThemedText>
+              </View>
+            )}
+
+            {phoneExists === true && (
+              <ThemedText
+                style={{ marginTop: 8, color: "#10B981", fontWeight: "500" }}
+              >
+                ✅ Account found! Send OTP to login.
+              </ThemedText>
+            )}
+
             {errors.phone && (
-              <ThemedText style={{ marginTop: 6 }}>{errors.phone}</ThemedText>
+              <ThemedText style={{ marginTop: 8, color: "#EF4444" }}>
+                {errors.phone}
+              </ThemedText>
             )}
           </View>
 
-          {/* Continue Button */}
+          {/* Buttons */}
           <View style={{ marginBottom: 30 }}>
             <TouchableOpacity
               onPress={handleContinue}
+              disabled={checkingPhone}
               style={{
-                backgroundColor: colors.background,
-                paddingVertical: 14,
-                borderRadius: 8,
-                marginBottom: 20,
+                backgroundColor: checkingPhone ? "#D1D5DB" : colors.tint,
+                paddingVertical: 16,
+                borderRadius: 12,
+                marginBottom: 16,
               }}
             >
-              <ThemedText style={{ textAlign: "center", fontWeight: "600" }}>
-                Continue
-              </ThemedText>
+              {checkingPhone ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : phoneExists === true ? (
+                <ThemedText
+                  style={{
+                    textAlign: "center",
+                    fontWeight: "600",
+                    color: colors.background,
+                  }}
+                >
+                  Send OTP
+                </ThemedText>
+              ) : (
+                <ThemedText
+                  style={{
+                    textAlign: "center",
+                    fontWeight: "600",
+                    color: colors.background,
+                  }}
+                >
+                  Continue
+                </ThemedText>
+              )}
             </TouchableOpacity>
 
-            {/* Sign Up Link */}
             <View
               style={{ flexDirection: "row", justifyContent: "center", gap: 4 }}
             >
-              <ThemedText>Don't have an account?</ThemedText>
-              <TouchableOpacity
-                onPress={() => router.navigate("/(auth)/signup")}
-              >
-                <ThemedText style={{ fontWeight: "600" }}>Sign up</ThemedText>
+              <ThemedText>New user?</ThemedText>
+              <TouchableOpacity onPress={() => router.push("/(auth)/signup")}>
+                <ThemedText style={{ fontWeight: "600", color: colors.tint }}>
+                  Create Account
+                </ThemedText>
               </TouchableOpacity>
             </View>
           </View>
