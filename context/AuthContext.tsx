@@ -11,7 +11,7 @@ import React, {
   useState,
 } from "react";
 
-const API_URL = "http://192.168.1.2:3001";
+const API_URL = "http://10.2.178.195:3001";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 

@@ -9,44 +9,52 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
+import { useTheme } from "@/context/ThemeContext";
+
 // Define the required type for the colors array that satisfies the LinearGradient props
 type GradientColorsArray = readonly [ColorValue, ColorValue, ...ColorValue[]];
 
 interface NavigationButtonProps {
   title: string;
   href: Href;
-  colorScheme: "tailor" | "customer"; // Use specific literal types for colorScheme
+  colorScheme: "tailor" | "customer"; // Use specific literal types for colorScheme0
 }
+
 // Apply the interface to the component props using React.FC or inline typing
-const NavigationButton: React.FC<NavigationButtonProps> = ({
-  title,
-  href,
-  colorScheme,
-}) => {
-  // Explicitly define the colors using the new type
-  const tailorColors: GradientColorsArray = ["#EE82EE", "#DDA0DD"];
-  const customerColors: GradientColorsArray = ["#40E0D0", "#00CED1"];
-
-  const gradientColors =
-    colorScheme === "tailor" ? tailorColors : customerColors;
-
-  return (
-    <Link href={href} asChild>
-      <TouchableOpacity style={styles.buttonContainer}>
-        <LinearGradient
-          colors={gradientColors}
-          style={styles.buttonGradient}
-          start={{ x: 0, y: 0.5 }}
-          end={{ x: 1, y: 0.5 }}
-        >
-          <Text style={styles.buttonText}>{title}</Text>
-        </LinearGradient>
-      </TouchableOpacity>
-    </Link>
-  );
-};
 
 export default function WelcomeScreen() {
+  //Using setUserRole to set separate theme for customers and Tailors
+  const { setUserRole } = useTheme();
+
+  const NavigationButton: React.FC<NavigationButtonProps> = ({
+    title,
+    href,
+    colorScheme,
+  }) => {
+    // Explicitly define the colors using the new type
+    const tailorColors: GradientColorsArray = ["#EE82EE", "#DDA0DD"];
+    const customerColors: GradientColorsArray = ["#40E0D0", "#00CED1"];
+
+    const gradientColors =
+      colorScheme === "tailor" ? tailorColors : customerColors;
+
+    return (
+      <Link href={href} onPress={() => setUserRole(colorScheme)} asChild>
+        <TouchableOpacity style={styles.buttonContainer}>
+          <LinearGradient
+            colors={gradientColors}
+            style={styles.buttonGradient}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+          >
+            <Text style={styles.buttonText}>{title}</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </Link>
+    );
+  };
+
   return (
     <View style={styles.container}>
       {/* Top Background Curve */}
