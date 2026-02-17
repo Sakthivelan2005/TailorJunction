@@ -2,7 +2,6 @@ import Icons from "@/config/Icons";
 import { useTheme } from "@/context/ThemeContext";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 interface HeaderProps {
   title?: string;
@@ -12,7 +11,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ title, onBackPress }) => {
   const { colors } = useTheme();
   return (
-    <SafeAreaView style={{ backgroundColor: colors.primary }}>
+    <View style={{ backgroundColor: colors.primary }}>
       <View style={styles.container}>
         {/* Left Side: Back Button */}
         <TouchableOpacity
@@ -32,16 +31,18 @@ const Header: React.FC<HeaderProps> = ({ title, onBackPress }) => {
           ) : null}
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    top: 25,
     height: 56,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 8,
+    zIndex: 1,
   },
   backButton: {
     padding: 8,
@@ -51,9 +52,10 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    top: 0,
   },
   titleText: {
-    fontSize: 18,
+    fontSize: 28,
     fontWeight: "600",
     color: "#333",
   },

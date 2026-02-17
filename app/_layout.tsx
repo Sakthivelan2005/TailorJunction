@@ -28,7 +28,6 @@ export default function RootLayout() {
           >
             <Stack>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="index" options={{ headerShown: false }} />
               <Stack.Screen name="home" options={{ headerShown: false }} />
               <Stack.Screen
                 name="modal"
@@ -40,11 +39,6 @@ export default function RootLayout() {
                 options={{ headerShown: false }}
               />
               <Stack.Screen name="(tailor)" options={{ headerShown: false }} />
-              <Stack.Screen name="login" options={{ title: "login" }} />
-              <Stack.Screen
-                name="Verification"
-                options={{ title: "Verification" }}
-              />
             </Stack>
             <StatusBar style="auto" />
           </ThemeProvider>

@@ -1,6 +1,6 @@
 import { EvilIcons } from "@expo/vector-icons";
 
 const Icons = {
-  back: <EvilIcons size={20} />,
+  back: <EvilIcons name="arrow-left" size={50} />,
 };
 export default Icons;
