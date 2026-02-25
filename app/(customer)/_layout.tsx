@@ -1,16 +1,28 @@
+import { Colors } from "@/constants/theme";
+import { useTheme } from "@/context/ThemeContext";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React from "react";
-import { MaterialCommunityIcons } from "@expo/vector-icons"; // [Official Expo Icons](https://docs.expo.dev)
-import { Colors } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Platform, StyleSheet } from "react-native";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 export default function CustomerLayout() {
   const colorScheme = useColorScheme();
   const themeColors = Colors[colorScheme ?? "light"];
+  const insets = useSafeAreaInsets();
+  const isButtonNavAndroid = Platform.OS === "android" && insets.bottom > 0;
+  const { colors } = useTheme();
 
   return (
-    <>
+    <SafeAreaView
+      style={{ flex: 1 }}
+      edges={["top", "left", "right", "bottom"]}
+    >
       <StatusBar
         style={colorScheme === "dark" ? "light" : "dark"}
         backgroundColor={colorScheme === "dark" ? "#001F3F" : "#fff"}
@@ -18,24 +30,26 @@ export default function CustomerLayout() {
 
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: themeColors.tint,
-          tabBarInactiveTintColor: themeColors.tabIconDefault,
-          tabBarStyle: {
-            backgroundColor: "#001F3F",
-            borderTopWidth: 0,
-            elevation: 10,
-            height: 70,
-            paddingBottom: 10,
-          },
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: "#8E8E93",
+          tabBarStyle: styles.tabBar,
+          tabBarItemStyle: styles.tabBarItem,
           headerShown: false,
+          tabBarShowLabel: true,
+        }}
+        safeAreaInsets={{
+          bottom: isButtonNavAndroid ? insets.bottom : undefined,
         }}
       >
         <Tabs.Screen
           name="Home"
           options={{
-            title: "Home",
-            tabBarIcon: ({ color }) => (
-              <MaterialCommunityIcons name="home" size={28} color={color} />
+            tabBarIcon: ({ color, focused }) => (
+              <MaterialCommunityIcons
+                name="home-outline"
+                size={26}
+                color={color}
+              />
             ),
           }}
         />
@@ -43,9 +57,12 @@ export default function CustomerLayout() {
         <Tabs.Screen
           name="tailors"
           options={{
-            title: "Tailors",
-            tabBarIcon: ({ color }) => (
-              <MaterialCommunityIcons name="content-cut" size={28} color={color} />
+            tabBarIcon: ({ color, focused }) => (
+              <MaterialCommunityIcons
+                name="account-group-outline"
+                size={26}
+                color={color}
+              />
             ),
           }}
         />
@@ -53,20 +70,52 @@ export default function CustomerLayout() {
         <Tabs.Screen
           name="tracking"
           options={{
-            title: "Orders",
-            tabBarIcon: ({ color }) => (
-              <MaterialCommunityIcons name="truck-delivery" size={28} color={color} />
+            tabBarIcon: ({ color, focused }) => (
+              <MaterialCommunityIcons
+                name="truck-delivery-outline"
+                size={26}
+                color={color}
+              />
             ),
           }}
         />
 
-        {/* Hiding internal process screens from the bottom tab bar */}
+        {/* Hidden screens */}
         <Tabs.Screen name="dress" options={{ href: null }} />
         <Tabs.Screen name="measurements" options={{ href: null }} />
-        <Tabs.Screen name="order-summary" options={{ href: null }} />
+        <Tabs.Screen name="Order" options={{ href: null }} />
         <Tabs.Screen name="payment" options={{ href: null }} />
         <Tabs.Screen name="review" options={{ href: null }} />
       </Tabs>
-    </>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBar: {
+    position: "relative",
+    bottom: 16,
+    left: 16,
+    right: 16,
+    height: 60,
+    backgroundColor: "white",
+    borderRadius: 30,
+    borderWidth: 1,
+    borderColor: "#E5E5EA",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+    paddingBottom: Platform.OS === "android" ? 8 : 12,
+    alignItems: "center",
+  },
+  tabBarItem: {
+    marginHorizontal: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+});
