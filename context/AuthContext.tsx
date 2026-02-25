@@ -11,7 +11,7 @@ import React, {
   useState,
 } from "react";
 
-const API_URL = "http://10.2.178.195:3001";
+const API_URL = "http://192.168.1.2:3001";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -210,14 +210,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
     try {
       const signupData = {
+        house_no: "123",
+        street: "Main St",
+        area: "Anna Nagar",
         role: role || "customer",
         phone: phoneNumber.replace(/\D/g, ""),
         email: email.trim(),
         fullName: fullName.trim(),
         password,
-        house_no: "123",
-        street: "Main St",
-        area: "Anna Nagar",
       };
 
       console.log("📤 Sending signup data:", signupData);
@@ -302,6 +302,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     setCurrentStep,
     userId,
     role,
+    setRole,
     isLoading,
     error,
     checkPhoneExists,
