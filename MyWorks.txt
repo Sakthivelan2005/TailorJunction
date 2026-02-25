@@ -1,0 +1,10 @@
+Run in CMD:
+
+npm install -g eas-cli
+eas login -b 
+
+eas build:configure
+
+eas build --platform android --profile development
+
+expo install expo-dev-client
