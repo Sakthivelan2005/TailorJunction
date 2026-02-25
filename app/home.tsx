@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 
+import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 
 // Define the required type for the colors array that satisfies the LinearGradient props
@@ -26,7 +27,7 @@ interface NavigationButtonProps {
 export default function WelcomeScreen() {
   //Using setUserRole to set separate theme for customers and Tailors
   const { setUserRole } = useTheme();
-
+  const { setRole } = useAuth();
   const NavigationButton: React.FC<NavigationButtonProps> = ({
     title,
     href,
@@ -40,7 +41,14 @@ export default function WelcomeScreen() {
       colorScheme === "tailor" ? tailorColors : customerColors;
 
     return (
-      <Link href={href} onPress={() => setUserRole(colorScheme)} asChild>
+      <Link
+        href={href}
+        onPress={() => {
+          setUserRole(colorScheme);
+          setRole(colorScheme);
+        }}
+        asChild
+      >
         <TouchableOpacity style={styles.buttonContainer}>
           <LinearGradient
             colors={gradientColors}
@@ -71,7 +79,7 @@ export default function WelcomeScreen() {
       <View style={styles.buttonSection}>
         <NavigationButton
           title="Tailors"
-          href={"/(auth)/signup"}
+          href={"/(auth)/Tailor/signup"}
           colorScheme="tailor"
         />
         <NavigationButton
