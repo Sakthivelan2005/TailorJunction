@@ -27,7 +27,7 @@ const SignUpScreen = () => {
     password,
     setPassword,
     phoneNumber,
-    setPhoneNumber, //  NOW EDITABLE
+    setPhoneNumber,
     completeSignup,
     isLoading,
     error,
@@ -364,7 +364,12 @@ const SignUpScreen = () => {
 
             {/* Login Link */}
             <View
-              style={{ flexDirection: "row", justifyContent: "center", gap: 4 }}
+              style={{
+                flexDirection: "row",
+                justifyContent: "center",
+                gap: 4,
+                alignItems: "center",
+              }}
             >
               <ThemedText>Already have an account?</ThemedText>
               <TouchableOpacity onPress={handleBackToLogin}>

@@ -9,6 +9,10 @@ export default function AuthLayout() {
         options={{ title: "login", headerTitleAlign: "center" }}
       />
       <Stack.Screen
+        name="Tailor/signup"
+        options={{ title: "Sign Up", headerTitleAlign: "center" }}
+      />
+      <Stack.Screen
         name="Verification"
         options={{ title: "Verification", headerTitleAlign: "center" }}
       />
