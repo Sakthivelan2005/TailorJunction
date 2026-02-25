@@ -18,6 +18,7 @@ export interface AuthContextType {
   // MySQL integration
   userId?: string;
   role?: "customer" | "tailor";
+  setRole: (role: "customer" | "tailor") => void;
   isLoading: boolean;
   error: string;
 
