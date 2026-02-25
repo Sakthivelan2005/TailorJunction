@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
     top: 25,
     height: 56,
     flexDirection: "row",
-    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 8,
     zIndex: 1,
   },
@@ -50,8 +50,6 @@ const styles = StyleSheet.create({
   },
   titleContainer: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
     top: 0,
   },
   titleText: {
