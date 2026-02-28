@@ -1,22 +1,26 @@
-// app/(tailor)/signup/index.tsx
+// app/(tailor)/signup.tsx
+
+import Header from "@/components/Header";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
+import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import PersonalDetails from "./PersonalDetails";
 import { ShopSpecialization } from "./ShopSpecialization";
-import TailorHeader from "./TailorHeader";
 
 export default function TailorSignup() {
   const { setRole, completeSignup } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<"personal" | "shop">(
     "personal",
   );
+  const { colors } = useTheme();
 
   useEffect(() => {
     setRole("tailor");
   }, [setRole]);
 
-  const handlePersonalNext = (data: any) => {
+  const handlePersonalNext = () => {
     setCurrentScreen("shop");
   };
 
@@ -28,9 +32,19 @@ export default function TailorSignup() {
     }
   };
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.primary || "#fff",
+    },
+    content: {
+      flex: 1,
+    },
+  });
+
   return (
     <View style={styles.container}>
-      <TailorHeader title="Tailors Sign Up" />
+      <Header title="Sign Up" onBackPress={() => router.back()} />
 
       <View style={styles.content}>
         {currentScreen === "personal" ? (
@@ -42,14 +56,3 @@ export default function TailorSignup() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-  },
-  content: {
-    flex: 1,
-    paddingTop: 20,
-  },
-});

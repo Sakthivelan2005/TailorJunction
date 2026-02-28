@@ -3,7 +3,7 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 interface TailorSectionProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   title?: string;
   subtitle?: string;
   style?: any;
