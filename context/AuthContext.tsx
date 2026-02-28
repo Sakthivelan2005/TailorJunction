@@ -32,6 +32,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
 
+  const [otpAttempts, setOtpAttempts] = useState(0);
+  const [lastOtpSentAt, setLastOtpSentAt] = useState<number | null>(null);
+  const MAX_OTP_ATTEMPTS = 5;
+  const OTP_COOLDOWN_SECONDS = 60;
+
   const signupUser = async (signupData: any): Promise<any> => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
@@ -162,43 +167,54 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const sendVerificationCode = async (phone: string): Promise<void> => {
     setIsLoading(true);
     setError("");
-    try {
-      if (!Device.isDevice) throw new Error("Please use physical device");
 
-      const { status } = await Notifications.requestPermissionsAsync();
-      if (status !== "granted")
-        throw new Error("Notification permission required");
+    try {
+      const now = Date.now();
+
+      // Rate limit OTP resend
+      if (lastOtpSentAt && now - lastOtpSentAt < OTP_COOLDOWN_SECONDS * 1000) {
+        const remaining = Math.ceil(
+          (OTP_COOLDOWN_SECONDS * 1000 - (now - lastOtpSentAt)) / 1000,
+        );
+        throw new Error(
+          `Please wait ${remaining}s before requesting OTP again.`,
+        );
+      }
 
       const cleanPhone = phone.replace(/\D/g, "");
+
+      // Check if phone already exists
+      const exists = await checkPhoneExists(cleanPhone);
+      if (exists) {
+        throw new Error("Phone number already registered.");
+      }
+
       setPhoneNumber(cleanPhone);
 
       const mockOtp = generateOTP();
       setVerificationCode(mockOtp);
       setOtp("");
-
-      console.log("🔢 OTP generated:", mockOtp);
-
-      const trigger: Notifications.TimeIntervalTriggerInput = {
-        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-        seconds: 2,
-      };
+      setOtpAttempts(0);
+      setLastOtpSentAt(now);
 
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: "🧵 Tailor Junction OTP",
+          title: "Tailor Junction OTP",
           body: `Your verification code: ${mockOtp}`,
-          data: { otp: mockOtp, type: "otp_verification" },
-          sound: true,
-          priority: Notifications.AndroidNotificationPriority.HIGH,
+          data: { otp: mockOtp },
         },
-        trigger,
+
+        trigger: {
+          // Add this line to fix the error
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: 60,
+          repeats: false,
+        },
       });
 
-      console.log("✅ OTP notification scheduled!");
       setCurrentStep("verification");
     } catch (err: any) {
       setError(err.message);
-      console.error("❌ Error:", err);
     } finally {
       setIsLoading(false);
     }
@@ -245,19 +261,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const verifyOtp = async (): Promise<boolean> => {
+    if (otpAttempts >= MAX_OTP_ATTEMPTS) {
+      setError("Too many failed attempts. Please request a new OTP.");
+      return false;
+    }
+
     if (otp.length !== 6) {
       setError("Enter 6-digit code");
       return false;
     }
+
     if (otp !== verificationCode) {
+      setOtpAttempts((prev) => prev + 1);
       setError("Invalid OTP");
       return false;
     }
+
     setError("");
+    setOtpAttempts(0);
     setCurrentStep("signup");
     return true;
   };
-
   const resetAuth = (): void => {
     setPhoneNumber("");
     setVerificationCode("");
