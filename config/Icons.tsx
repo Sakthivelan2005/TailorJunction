@@ -1,6 +1,22 @@
-import { EvilIcons } from "@expo/vector-icons";
+// hooks/useThemedIcons.ts
+import { Colors } from "@/constants/theme";
+import { EvilIcons, Ionicons } from "@expo/vector-icons";
+import React from "react";
+import { useColorScheme } from "react-native";
 
-const Icons = {
-  back: <EvilIcons name="arrow-left" size={50} />,
+export const useThemedIcons = () => {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme || "light"];
+
+  return {
+    back: <EvilIcons name="arrow-left" size={50} color={colors.text} />,
+    location: (
+      <Ionicons name="location-outline" size={25} color={colors.text} />
+    ),
+    home: <Ionicons name="home-outline" size={28} color={colors.text} />,
+    profile: <Ionicons name="person-outline" size={28} color={colors.text} />,
+    settings: (
+      <Ionicons name="settings-outline" size={28} color={colors.text} />
+    ),
+  };
 };
-export default Icons;
