@@ -1,3 +1,4 @@
+// backend/src/db.js
 // Load .env variables FIRST
 require("dotenv").config();
 
