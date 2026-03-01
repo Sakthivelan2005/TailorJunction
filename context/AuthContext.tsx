@@ -1,5 +1,6 @@
-// context/AuthContext.tsx - ✅ FIXED "result is not defined"
+// context/AuthContext.tsx -  FIXED "result is not defined"
 import { AuthContextType } from "@/types";
+import { ShopDetailsType } from "@/types/shopDetails";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
@@ -11,16 +12,21 @@ import React, {
   useState,
 } from "react";
 
-const API_URL = "http://192.168.1.2:3001";
+const API_URL = "http://192.168.1.7:3001";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const ShopDetailsContext = createContext<ShopDetailsType | undefined>(
+  undefined,
+);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
+  // AUTH STATES
   const [phoneNumber, setPhoneNumber] = useState<string>("");
   const [verificationCode, setVerificationCode] = useState<string>("");
   const [otp, setOtp] = useState<string>("");
+  const [verifiedOtp, setVerifiedOtp] = useState<boolean>(false);
   const [fullName, setFullName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
@@ -32,10 +38,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
 
+  // OTP rate limiting states
   const [otpAttempts, setOtpAttempts] = useState(0);
   const [lastOtpSentAt, setLastOtpSentAt] = useState<number | null>(null);
   const MAX_OTP_ATTEMPTS = 5;
   const OTP_COOLDOWN_SECONDS = 60;
+
+  //Tailor's additional details
+  const [selectedSpecs, setSelectedSpecs] = useState<string | null>(null);
+  const [shopName, setShopName] = useState("");
+  const [shopLocation, setShopLocation] = useState("");
+  const [houseNo, setHouseNo] = useState("");
+  const [street, setStreet] = useState("");
+  const [area, setArea] = useState("");
+  const [pincode, setPincode] = useState("");
+  const [district, setDistrict] = useState("Chennai");
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const [shopPhoto, setShopPhoto] = useState<string | null>(null);
 
   const signupUser = async (signupData: any): Promise<any> => {
     const controller = new AbortController();
@@ -68,13 +87,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
       console.log("📡 Backend response:", responseData);
 
-      // ✅ CRITICAL FIX: IGNORE MySQL DOUBLE WARNING = SUCCESS
+      //  CRITICAL FIX: IGNORE MySQL DOUBLE WARNING = SUCCESS
       if (
         responseData.error &&
         responseData.error.includes("DOUBLE") &&
         responseData.error.includes("C00001")
       ) {
-        console.log("✅ SUCCESS: Data inserted! (MySQL warning ignored)");
+        console.log(" SUCCESS: Data inserted! (MySQL warning ignored)");
         return {
           success: true,
           userId: "C00001",
@@ -82,7 +101,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         };
       }
 
-      // ✅ Normal success conditions
+      //  Normal success conditions
       if (
         responseData.success === true ||
         (responseData.affectedRows && responseData.affectedRows > 0) ||
@@ -95,7 +114,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         };
       }
 
-      // ✅ Real errors (not MySQL warnings)
+      //  Real errors (not MySQL warnings)
       const errorMsg =
         responseData.error || responseData.message || "Signup failed";
       throw new Error(errorMsg);
@@ -111,18 +130,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   // context/AuthContext.tsx - Add this function
   const checkPhoneExists = async (phone: string): Promise<boolean> => {
     try {
-      console.log("🔍 Checking phone exists:", phone);
+      console.log("🔍 Checking phone exists:", phone, " Role:", role);
 
       const response = await fetch(`${API_URL}/api/check-phone`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phone.replace(/\D/g, "") }),
+        body: JSON.stringify({ phone: phone.replace(/\D/g, ""), role: role }),
       });
 
       const result = await response.json();
       console.log("📱 Phone check result:", result);
 
-      return result.exists === true;
+      return result.exists;
     } catch (error) {
       console.error("❌ Phone check failed:", error);
       return false; // Assume doesn't exist on error
@@ -204,12 +223,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           data: { otp: mockOtp },
         },
 
-        trigger: {
-          // Add this line to fix the error
-          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-          seconds: 60,
-          repeats: false,
-        },
+        trigger: null,
       });
 
       setCurrentStep("verification");
@@ -226,9 +240,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
     try {
       const signupData = {
-        house_no: "123",
-        street: "Main St",
-        area: "Anna Nagar",
         role: role || "customer",
         phone: phoneNumber.replace(/\D/g, ""),
         email: email.trim(),
@@ -238,23 +249,79 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
       console.log("📤 Sending signup data:", signupData);
 
-      // ✅ This CANNOT fail with "result is not defined"
+      //  This CANNOT fail with "result is not defined"
       const result = await signupUser(signupData);
 
-      console.log("✅ FINAL SUCCESS:", result);
+      console.log(" FINAL SUCCESS:", result);
 
       setUserId(result.userId);
       setRole(result.role);
       setCurrentStep("home");
-
-      const homePath =
-        result.role === "tailor" ? "/(tailor)/Home" : "/(customer)/Home";
-      router.replace(homePath as any);
     } catch (error: any) {
       const errorMsg = error.message || "Signup failed";
       setError(errorMsg);
       console.error("❌ completeSignup ERROR:", errorMsg);
       throw error; // Re-throw for UI to handle
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const completeTailorDetails = async (): Promise<void> => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const formData = new FormData();
+
+      formData.append("tailor_id", userId); // 🔥 VERY IMPORTANT
+      formData.append("tailor_name", fullName);
+      formData.append("shop_name", shopName);
+      formData.append("experience_years", "0");
+      formData.append("specialization", selectedSpecs ? selectedSpecs : "");
+      formData.append("availability_status", "available");
+      formData.append(houseNo ? "house_no" : "house_no", houseNo);
+      formData.append(street ? "street" : "street", street);
+      formData.append(area ? "area" : "area", area);
+      formData.append(district ? "district" : "district", district);
+      formData.append(pincode ? "pincode" : "pincode", pincode);
+      formData.append("location", shopLocation);
+
+      if (profilePhoto) {
+        formData.append("profilePhoto", {
+          uri: profilePhoto,
+          name: "profile.jpg",
+          type: "image/jpeg",
+        } as any);
+      }
+
+      if (shopPhoto) {
+        formData.append("shopPhoto", {
+          uri: shopPhoto,
+          name: "shop.jpg",
+          type: "image/jpeg",
+        } as any);
+      }
+
+      console.log("📤 Sending tailor details:", formData);
+
+      const res = await fetch(`${API_URL}/api/shopDetails`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Server error: ${text}`);
+      }
+
+      const data = await res.json();
+      if (!data.success) throw new Error("Failed to save shop details");
+
+      router.replace("/(tailor)/Home");
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
     } finally {
       setIsLoading(false);
     }
@@ -273,13 +340,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
     if (otp !== verificationCode) {
       setOtpAttempts((prev) => prev + 1);
-      setError("Invalid OTP");
+      setError("Invalid OTP - Attempts: " + (otpAttempts + 1));
       return false;
     }
 
     setError("");
     setOtpAttempts(0);
     setCurrentStep("signup");
+    setVerifiedOtp(true);
     return true;
   };
   const resetAuth = (): void => {
@@ -315,6 +383,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     verificationCode,
     setVerificationCode,
     otp,
+    verifiedOtp,
     setOtp,
     fullName,
     setFullName,
@@ -335,10 +404,47 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     verifyOtp,
     resetAuth,
     handleLogin,
+    completeTailorDetails,
+  };
+
+  const shopDetailsValue: ShopDetailsType = {
+    selectedSpecs,
+    setSelectedSpecs,
+
+    shopName,
+    setShopName,
+
+    shopLocation,
+    setShopLocation,
+
+    houseNo,
+    setHouseNo,
+
+    street,
+    setStreet,
+
+    area,
+    setArea,
+
+    district,
+    setDistrict,
+
+    profilePhoto,
+    setProfilePhoto,
+
+    shopPhoto,
+    setShopPhoto,
+
+    pincode,
+    setPincode,
   };
 
   return (
-    <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={contextValue}>
+      <ShopDetailsContext.Provider value={shopDetailsValue}>
+        {children}
+      </ShopDetailsContext.Provider>
+    </AuthContext.Provider>
   );
 };
 
@@ -346,6 +452,14 @@ export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error("useAuth must be used within AuthProvider");
+  }
+  return context;
+};
+
+export const useShopDetails = () => {
+  const context = useContext(ShopDetailsContext);
+  if (!context) {
+    throw new Error("useShopDetails must be used within ShopDetailsProvider");
   }
   return context;
 };
