@@ -6,11 +6,12 @@ import { useTheme } from "@/context/ThemeContext";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import PersonalDetails from "./PersonalDetails";
 import { ShopSpecialization } from "./ShopSpecialization";
 
 export default function TailorSignup() {
-  const { setRole, completeSignup } = useAuth();
+  const { setRole, completeSignup, completeTailorDetails } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<"personal" | "shop">(
     "personal",
   );
@@ -20,13 +21,18 @@ export default function TailorSignup() {
     setRole("tailor");
   }, [setRole]);
 
-  const handlePersonalNext = () => {
-    setCurrentScreen("shop");
+  const handlePersonalNext = async () => {
+    try {
+      await completeSignup();
+      setCurrentScreen("shop");
+    } catch (error) {
+      console.error("Signup failed:", error);
+    }
   };
 
   const handleSignupComplete = async () => {
     try {
-      await completeSignup();
+      await completeTailorDetails();
     } catch (error) {
       console.error("Signup failed:", error);
     }
@@ -43,7 +49,7 @@ export default function TailorSignup() {
   });
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <Header title="Sign Up" onBackPress={() => router.back()} />
 
       <View style={styles.content}>
@@ -53,6 +59,6 @@ export default function TailorSignup() {
           <ShopSpecialization onNext={handleSignupComplete} />
         )}
       </View>
-    </View>
+    </SafeAreaView>
   );
 }

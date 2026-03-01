@@ -2,9 +2,12 @@
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { Images } from "@/config/Images";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/hooks/useToast";
+import { pushNotification } from "@/utils/notificationConfig";
+import { Image } from "expo-image";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -18,6 +21,7 @@ import {
 } from "react-native";
 
 const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
+  const labelColor = "#000000";
   const { colors } = useTheme();
   const {
     fullName,
@@ -32,10 +36,11 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
     setOtp,
     sendVerificationCode,
     verifyOtp,
+    verifiedOtp,
     isLoading,
     error,
-    completeSignup,
     resetAuth,
+    checkPhoneExists,
   } = useAuth();
 
   const { showToast } = useToast();
@@ -49,12 +54,8 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
   }>({});
 
   const [showPassword, setShowPassword] = useState(false);
-  const [isRegistered, setIsRegistered] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
 
-  const [showOtpInput, setShowOtpInput] = useState(false);
-
-  const [generatedOtp, setGeneratedOtp] = useState<string | null>(null);
   const [otpVisible, setOtpVisible] = useState(false);
 
   const validateForm = () => {
@@ -75,8 +76,8 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
 
     if (!password) {
       newErrors.password = "Password is required.";
-    } else if (password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters long.";
+    } else if (password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters long.";
     }
 
     if (!phoneNumber) {
@@ -97,7 +98,6 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
 
   const handleSignUp = async () => {
     setSubmitAttempted(true);
-    onNext();
     if (!validateForm()) {
       showToast("Please correct the highlighted fields.", "warning");
       return;
@@ -108,14 +108,12 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
     try {
       showToast("Creating your account. Please wait...", "success");
 
-      await completeSignup();
-
       showToast(
         `Welcome ${fullName}. Your account has been created successfully.`,
         "success",
       );
 
-      setIsRegistered(true);
+      onNext(); // Move to next step after successful signup
     } catch (err: any) {
       const errorMessage =
         err.message || "Registration failed. Please try again.";
@@ -134,6 +132,10 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
   const handlePhoneVerify = async () => {
     try {
       await sendVerificationCode(phoneNumber);
+      pushNotification(
+        "OTP Sent",
+        "A verification code has been sent to your mobile number.",
+      );
       setOtpVisible(true);
       showToast("OTP sent successfully.", "success");
     } catch (err: any) {
@@ -150,34 +152,27 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
       setOtpVisible(false);
     }
   };
-  const handleVerifyPhone = () => {
-    console.log(
-      "Invalid phone number format:",
-      phoneNumber,
-      " Bool:",
-      !phoneNumber,
-    );
+  const handleVerifyPhone = async () => {
     console.log(
       "Validation result:",
       validatePhone(phoneNumber),
       "Bool:",
       !validatePhone(phoneNumber),
     );
-
+    console.log(
+      "Phone exists check: here's the promise:",
+      await checkPhoneExists(phoneNumber),
+    );
     if (!phoneNumber || !validatePhone(phoneNumber)) {
       showToast("Please enter a valid 10-digit mobile number.", "warning");
+      return;
+    } else if (await checkPhoneExists(phoneNumber)) {
+      showToast("This phone number is already registered.", "error");
+      setOtpVisible(false);
       return;
     } else {
       handlePhoneVerify();
     }
-
-    // Generate dummy OTP (for now)
-    const randomOtp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    setGeneratedOtp(randomOtp);
-    setShowOtpInput(true);
-
-    console.log("Generated OTP:", randomOtp); // remove in production
 
     showToast("OTP sent to your mobile number.", "success");
   };
@@ -206,45 +201,6 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
     resetAuth();
     router.navigate("/Tailor/login");
   };
-
-  if (isRegistered) {
-    return (
-      <ThemedView
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          padding: 20,
-          backgroundColor: "rgba(255, 255, 255, 0.9)",
-        }}
-      >
-        <View style={{ alignItems: "center" }}>
-          <ThemedText
-            style={{ textAlign: "center", marginBottom: 12, fontSize: 20 }}
-          >
-            Account Created Successfully
-          </ThemedText>
-          <ThemedText style={{ textAlign: "center", marginBottom: 30 }}>
-            Welcome to TailorJunction, {fullName}.
-          </ThemedText>
-          <TouchableOpacity
-            onPress={() => router.navigate("/(customer)/Home")}
-            style={{
-              backgroundColor: colors.secondary,
-              paddingHorizontal: 24,
-              paddingVertical: 12,
-              borderRadius: 8,
-            }}
-          >
-            <ThemedText style={{ color: colors.primary, fontWeight: "600" }}>
-              Go to Home
-            </ThemedText>
-          </TouchableOpacity>
-        </View>
-      </ThemedView>
-    );
-  }
-
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -284,7 +240,9 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
               margin: 15,
             }}
           >
-            <ThemedText style={{ marginBottom: 8 }}>Full Name</ThemedText>
+            <ThemedText style={{ marginBottom: 8, color: labelColor }}>
+              Full Name
+            </ThemedText>
             <TextInput
               placeholder="Enter your full name"
               value={fullName}
@@ -310,7 +268,23 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
             )}
             {!errors.name && <View style={{ marginBottom: 16 }} />}
 
-            <ThemedText style={{ marginBottom: 8 }}>Phone Number</ThemedText>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "flex-start",
+              }}
+            >
+              <ThemedText style={{ marginBottom: 8, color: labelColor }}>
+                Phone Number
+              </ThemedText>
+              {/* Show verified icon if OTP is verified */}
+              {verifiedOtp && (
+                <Image
+                  source={Images.verified}
+                  style={{ width: 24, height: 24, marginRight: 8, left: 5 }}
+                />
+              )}
+            </View>
 
             <View
               style={{
@@ -337,26 +311,29 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
                   borderColor: errors.phone ? "#EF4444" : "#494545",
                   borderRadius: 8,
                   backgroundColor: colors.background,
+                  color: colors.text,
                 }}
-                placeholderTextColor={colors.primary}
+                placeholderTextColor={colors.text}
               />
 
-              <TouchableOpacity
-                onPress={handleVerifyPhone}
-                disabled={isLoading}
-                style={{
-                  marginLeft: 8,
-                  backgroundColor: "#0a7ea4",
-                  paddingHorizontal: 14,
-                  paddingVertical: 10,
-                  borderRadius: 8,
-                  opacity: isLoading ? 0.6 : 1,
-                }}
-              >
-                <ThemedText style={{ color: "#fff", fontWeight: "600" }}>
-                  Verify
-                </ThemedText>
-              </TouchableOpacity>
+              {!verifiedOtp && (
+                <TouchableOpacity
+                  onPress={handleVerifyPhone}
+                  disabled={isLoading}
+                  style={{
+                    marginLeft: 8,
+                    backgroundColor: "#0a7ea4",
+                    paddingHorizontal: 14,
+                    paddingVertical: 10,
+                    borderRadius: 8,
+                    opacity: isLoading ? 0.6 : 1,
+                  }}
+                >
+                  <ThemedText style={{ color: "#fff", fontWeight: "600" }}>
+                    Verify
+                  </ThemedText>
+                </TouchableOpacity>
+              )}
             </View>
 
             {otpVisible && (
@@ -412,7 +389,9 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
             )}
             {!errors.phone && <View style={{ marginBottom: 16 }} />}
 
-            <ThemedText style={{ marginBottom: 8 }}>Email</ThemedText>
+            <ThemedText style={{ marginBottom: 8, color: labelColor }}>
+              Email
+            </ThemedText>
             <TextInput
               placeholder="Enter your email"
               value={email}
@@ -440,7 +419,9 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
             )}
             {!errors.email && <View style={{ marginBottom: 16 }} />}
 
-            <ThemedText style={{ marginBottom: 8 }}>Password</ThemedText>
+            <ThemedText style={{ marginBottom: 8, color: labelColor }}>
+              Password
+            </ThemedText>
             <View
               style={{
                 flexDirection: "row",
@@ -497,7 +478,7 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
                     color: "#FFFFFF",
                   }}
                 >
-                  Register
+                  Next
                 </ThemedText>
               )}
             </TouchableOpacity>

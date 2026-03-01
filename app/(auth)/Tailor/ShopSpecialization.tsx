@@ -1,10 +1,10 @@
-// app/(tailor)/signup/ShopSpecialization.tsx
 import { useThemedIcons } from "@/config/Icons";
-import { useAuth } from "@/context/AuthContext";
+import { useShopDetails } from "@/context/AuthContext";
+import { specializations } from "@/data/Specialization";
 import { useToast } from "@/hooks/useToast";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import React, { useState } from "react";
+import React from "react";
 import {
   FlatList,
   Image,
@@ -12,39 +12,47 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import TailorSection from "./TailorSection";
-
-const specializations = [
-  "Shirt",
-  "Pant",
-  "Kurta",
-  "Sherwani",
-  "Suit",
-  "Blazer",
-  "Trousers",
-  "Jeans",
-  "Shorts",
-  "Dhoti",
-  "Lungi",
-  "Pathani",
-];
 
 export const ShopSpecialization: React.FC<{ onNext: () => void }> = ({
   onNext,
 }) => {
-  const { password, setPassword } = useAuth();
+  const {
+    selectedSpecs,
+    setSelectedSpecs,
+
+    shopName,
+    setShopName,
+
+    shopLocation,
+    setShopLocation,
+
+    houseNo,
+    setHouseNo,
+
+    street,
+    setStreet,
+
+    area,
+    setArea,
+
+    district,
+    setDistrict,
+
+    profilePhoto,
+    setProfilePhoto,
+
+    shopPhoto,
+    setShopPhoto,
+
+    pincode,
+    setPincode,
+  } = useShopDetails();
+
   const Icons = useThemedIcons();
   const { showToast } = useToast();
-  const [selectedSpecs, setSelectedSpecs] = useState<string[]>([]);
-  const [shopLocation, setShopLocation] = useState("");
-  const [houseNo, setHouseNo] = useState("");
-  const [street, setStreet] = useState("");
-  const [area, setArea] = useState("");
-  const [district, setDistrict] = useState("Chennai");
-  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
-  const [shopPhoto, setShopPhoto] = useState<string | null>(null);
 
   const pickImage = async (type: "profile" | "shop") => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -60,21 +68,16 @@ export const ShopSpecialization: React.FC<{ onNext: () => void }> = ({
     }
   };
 
-  const toggleSpecialization = (spec: string) => {
-    setSelectedSpecs((prev) =>
-      prev.includes(spec)
-        ? prev.filter((s) => s !== spec)
-        : [...prev, spec].slice(0, 8),
-    );
-  };
-
   const handleSignup = () => {
-    if (password.length < 6) {
-      showToast("Password must be at least 6 characters", "warning");
-      return;
+    if (pincode && !/^\d+$/.test(pincode)) {
+      showToast("Pincode must contain only numbers", "warning");
     }
-    if (!selectedSpecs.length) {
-      showToast("Select at least one specialization", "warning");
+    if (pincode && pincode.length < 6) {
+      showToast("Pincode must be 6 digits", "warning");
+    }
+
+    if (!selectedSpecs) {
+      showToast("Select a specialization", "warning");
       return;
     }
     if (!houseNo || !street || !area) {
@@ -84,6 +87,13 @@ export const ShopSpecialization: React.FC<{ onNext: () => void }> = ({
     onNext();
   };
 
+  const formatPincode = (text: string) => {
+    // Remove non-digit characters
+    const cleaned = text.replace(/\D/g, "");
+    // Limit to 6 digits
+    return cleaned.slice(0, 6);
+  };
+
   return (
     <FlatList
       data={specializations}
@@ -91,29 +101,43 @@ export const ShopSpecialization: React.FC<{ onNext: () => void }> = ({
       keyExtractor={(item) => item}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.container}
-      renderItem={({ item }) => (
-        <TouchableOpacity
-          style={[
-            styles.specChip,
-            selectedSpecs.includes(item) && styles.specChipActive,
-          ]}
-          onPress={() => toggleSpecialization(item)}
-        >
-          <Text
-            style={[
-              styles.specText,
-              selectedSpecs.includes(item) && styles.specTextActive,
-            ]}
+      renderItem={({ item }) => {
+        const isSelected = selectedSpecs === item;
+
+        return (
+          <TouchableOpacity
+            style={[styles.specChip, isSelected && styles.specChipActive]}
+            onPress={() => setSelectedSpecs(item)}
           >
-            {item}
-          </Text>
-        </TouchableOpacity>
-      )}
+            {/* Radio circle */}
+            <View style={styles.radioOuter}>
+              {isSelected && <View style={styles.radioInner} />}
+            </View>
+
+            <Text
+              style={[styles.specText, isSelected && styles.specTextActive]}
+            >
+              {item}
+            </Text>
+          </TouchableOpacity>
+        );
+      }}
       ListHeaderComponent={
         <>
           {/* SHOP LOCATION */}
           <TailorSection title="Shop Location" style={{ marginTop: 20 }}>
             <View style={styles.locationGroup}>
+              <View style={styles.locationInput}>
+                {Icons.shop}
+                <TextInput
+                  style={styles.locationTextInput}
+                  placeholder="Enter Your Shop Name"
+                  value={shopName}
+                  onChangeText={setShopName}
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+
               <View style={styles.locationInput}>
                 {Icons.location}
                 <TextInput
@@ -121,6 +145,7 @@ export const ShopSpecialization: React.FC<{ onNext: () => void }> = ({
                   placeholder="Enter complete shop address"
                   value={shopLocation}
                   onChangeText={setShopLocation}
+                  placeholderTextColor="#9CA3AF"
                   multiline
                 />
               </View>
@@ -131,12 +156,14 @@ export const ShopSpecialization: React.FC<{ onNext: () => void }> = ({
                   placeholder="House No"
                   value={houseNo}
                   onChangeText={setHouseNo}
+                  placeholderTextColor="#9CA3AF"
                 />
                 <TextInput
                   style={[styles.input, { flex: 2 }]}
                   placeholder="Street"
                   value={street}
                   onChangeText={setStreet}
+                  placeholderTextColor="#9CA3AF"
                 />
               </View>
 
@@ -146,6 +173,7 @@ export const ShopSpecialization: React.FC<{ onNext: () => void }> = ({
                   placeholder="Area"
                   value={area}
                   onChangeText={setArea}
+                  placeholderTextColor="#9CA3AF"
                 />
                 <TextInput
                   style={[styles.input, { flex: 1 }]}
@@ -154,6 +182,18 @@ export const ShopSpecialization: React.FC<{ onNext: () => void }> = ({
                   onChangeText={setDistrict}
                 />
               </View>
+
+              <TextInput
+                style={styles.input}
+                placeholder="Pincode"
+                value={pincode}
+                onChangeText={(text) => {
+                  const formatted = formatPincode(text);
+                  setPincode(formatted);
+                }}
+                keyboardType="number-pad"
+                placeholderTextColor="#9CA3AF"
+              />
             </View>
           </TailorSection>
 
@@ -200,35 +240,17 @@ export const ShopSpecialization: React.FC<{ onNext: () => void }> = ({
             </View>
           </TailorSection>
 
-          {/* SPECIALIZATION TITLE */}
-          <TailorSection title="Shop Specializations" />
+          <TailorSection title="Shop Specialization" />
         </>
       }
       ListFooterComponent={
         <>
           <Text style={styles.specCount}>
-            {selectedSpecs.length}/8 selected
+            Selected: {selectedSpecs ?? "None"}
           </Text>
 
-          {/* PASSWORD */}
-          <TailorSection title="Password">
-            <TextInput
-              style={styles.input}
-              placeholder="Minimum 6 characters"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-          </TailorSection>
-
-          {/* SUBMIT */}
           <TouchableOpacity style={styles.signupButton} onPress={handleSignup}>
             <Text style={styles.signupButtonText}>Complete Sign Up</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.googleButton}>
-            <Ionicons name="logo-google" size={20} color="#fff" />
-            <Text style={styles.googleButtonText}>Sign with Google</Text>
           </TouchableOpacity>
         </>
       }
@@ -237,10 +259,8 @@ export const ShopSpecialization: React.FC<{ onNext: () => void }> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-  },
+  container: { paddingHorizontal: 20, paddingBottom: 40 },
+
   locationGroup: { gap: 16 },
   locationInput: {
     flexDirection: "row",
@@ -251,11 +271,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: "#FAFAFA",
   },
-  locationTextInput: {
-    flex: 1,
-    fontSize: 16,
-    textAlignVertical: "top",
-  },
+  locationTextInput: { flex: 1, fontSize: 16 },
+
   addressRow: { flexDirection: "row", gap: 12 },
   input: {
     borderWidth: 2,
@@ -264,7 +281,9 @@ const styles = StyleSheet.create({
     padding: 16,
     fontSize: 16,
     backgroundColor: "#FAFAFA",
+    color: "#374151",
   },
+
   photoRow: { flexDirection: "row", gap: 16 },
   photoContainer: { flex: 1 },
   uploadedPhoto: {
@@ -284,6 +303,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   placeholderText: { color: "#6B7280", fontWeight: "500" },
+
   specChip: {
     flex: 1,
     margin: 6,
@@ -292,42 +312,49 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#E5E7EB",
     alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
   },
   specChipActive: {
     backgroundColor: "#8B5CF6",
     borderColor: "#8B5CF6",
   },
+
+  radioOuter: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radioInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#fff",
+  },
+
   specText: { fontWeight: "600", color: "#374151" },
   specTextActive: { color: "#fff" },
+
   specCount: {
     textAlign: "center",
     marginVertical: 12,
     color: "#6B7280",
   },
+
   signupButton: {
     backgroundColor: "#8B5CF6",
     paddingVertical: 22,
     borderRadius: 20,
     alignItems: "center",
-    marginBottom: 16,
   },
   signupButtonText: {
     color: "#fff",
     fontSize: 20,
     fontWeight: "800",
-  },
-  googleButton: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 12,
-    paddingVertical: 18,
-    borderWidth: 2,
-    borderColor: "#E5E7EB",
-    borderRadius: 20,
-    marginBottom: 40,
-  },
-  googleButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
   },
 });
