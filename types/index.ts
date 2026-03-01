@@ -4,6 +4,7 @@ export interface AuthContextType {
   verificationCode: string;
   setVerificationCode: (code: string) => void;
   otp: string;
+  verifiedOtp: boolean;
   setOtp: (otp: string) => void;
   fullName: string;
   setFullName: (name: string) => void;
@@ -25,6 +26,7 @@ export interface AuthContextType {
   // Functions
   sendVerificationCode: (phone: string) => Promise<void>;
   completeSignup: () => Promise<void>;
+  completeTailorDetails: () => Promise<void>;
   verifyOtp: () => Promise<boolean>;
   resetAuth: () => void;
   handleLogin: () => Promise<void>;
