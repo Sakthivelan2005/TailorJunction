@@ -1,8 +1,9 @@
 // backend/src/db.js
 // Load .env variables FIRST
-require("dotenv").config();
+import dotenv from "dotenv";
+dotenv.config();
 
-const mysql = require("mysql2");
+import mysql from "mysql2/promise";
 
 // Use process.env from .env
 const pool = mysql.createPool({
@@ -17,15 +18,14 @@ const pool = mysql.createPool({
 });
 
 // TEST CONNECTION
-pool
-  .promise()
-  .execute("SELECT 1 as connected")
-  .then(() => {
-    console.log("✅ MySQL Connected Successfully!");
-  })
-  .catch((err) => {
-    console.error("❌ MySQL Connection Failed:", err.message);
-  });
+try {
+  const connection = await pool.getConnection();
+  await connection.query("SELECT 1");
+  connection.release();
+  console.log("MySQL Connected Successfully!");
+} catch (err) {
+  console.error("MySQL Connection Failed:", err.message);
+}
 
 // Export promise version for async/await
-module.exports = pool.promise();
+export default pool;

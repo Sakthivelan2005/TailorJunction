@@ -1,9 +1,9 @@
-//Backend/authController.js
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const pool = require("./db");
+//Backend/src/authController.js
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import pool from "./db.js";
 
-const signup = async (req, res) => {
+export const signup = async (req, res) => {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
@@ -39,47 +39,7 @@ const signup = async (req, res) => {
       throw new Error("Failed to generate user_id - check database triggers");
     }
 
-    console.log("✅ New user created:", { userId, numericId });
-
-    // **TRIGGER already created profile row - just UPDATE it**
-    if (data.role === "customer") {
-      await connection.execute(
-        `UPDATE customer_profile 
-         SET customer_name = ?, house_no = ?, street = ?, area = ?, 
-             district = ?, state = ?, country = ?, pincode = ?
-         WHERE customer_id = ?`,
-        [
-          data.fullName,
-          data.house_no,
-          data.street,
-          data.area,
-          data.district || "Tamil Nadu",
-          data.state || "Tamil Nadu",
-          data.country || "India",
-          data.pincode || "",
-          userId,
-        ],
-      );
-    } else {
-      await connection.execute(
-        `UPDATE tailor_shop_profile 
-         SET tailor_name = ?, shop_name = ?, house_no = ?, street = ?, area = ?,
-             district = ?, state = ?, country = ?, pincode = ?
-         WHERE tailor_id = ?`,
-        [
-          data.fullName,
-          `${data.fullName}'s Shop`,
-          data.house_no,
-          data.street,
-          data.area,
-          data.district || "Tamil Nadu",
-          data.state || "Tamil Nadu",
-          data.country || "India",
-          data.pincode || "",
-          userId,
-        ],
-      );
-    }
+    console.log(" New user created:", { userId, numericId });
 
     await connection.commit();
 
@@ -102,16 +62,14 @@ const signup = async (req, res) => {
     console.error("Signup error:", error);
     res.status(400).json({
       success: false,
-      error: error.message.includes("already exists")
-        ? "Phone/Email already registered for this role"
-        : error.message,
+      error: error.message,
     });
   } finally {
     connection.release();
   }
 };
 
-const verifyOtp = async (req, res) => {
+export const verifyOtp = async (req, res) => {
   try {
     const { phone, otp } = req.body;
 
@@ -128,10 +86,10 @@ const verifyOtp = async (req, res) => {
   }
 };
 
-const checkPhoneExists = async (req, res) => {
+export const checkPhoneExists = async (req, res) => {
   try {
     const { phone, role } = req.body;
-
+    console.log("Checking phone existence for:", phone, " Role: ", role);
     const [rows] = await pool.execute(
       `SELECT user_id FROM users 
        WHERE phone = ? AND role = ?`,
@@ -146,7 +104,7 @@ const checkPhoneExists = async (req, res) => {
   }
 };
 
-const login = async (req, res) => {
+export const login = async (req, res) => {
   try {
     const { phone, password, role } = req.body;
 
@@ -188,11 +146,4 @@ const login = async (req, res) => {
     console.error("Login error:", error);
     res.status(500).json({ success: false, error: "Login failed" });
   }
-};
-
-module.exports = {
-  signup,
-  checkPhoneExists,
-  verifyOtp,
-  login,
 };
