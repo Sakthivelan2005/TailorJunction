@@ -48,7 +48,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [selectedSpecs, setSelectedSpecs] = useState<Specialization | null>(
     null,
   );
-  const [dressVarieties, setDressVarieties] = useState<string[]>([]);
+  const [dressVarieties, setDressVarieties] = useState<number[]>([]);
   const [shopName, setShopName] = useState("");
   const [shopLocation, setShopLocation] = useState("");
   const [houseNo, setHouseNo] = useState("");
@@ -128,6 +128,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       }
       throw new Error(err.message || "Network error");
     }
+  };
+
+  // POST tailor pricing
+  const saveTailorPricing = async (
+    tailorId: string | undefined,
+    selectedDressIds: number[],
+    allDressTypes: { dress_id: number; base_price: number }[],
+  ) => {
+    const prices = selectedDressIds.map((id) => {
+      const dress = allDressTypes.find((d) => d.dress_id === id);
+      return {
+        dress_id: id,
+        price: dress?.base_price || 0,
+      };
+    });
+
+    const res = await fetch(`${API_URL}/api/tailor-pricing`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tailor_id: tailorId,
+        prices,
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text);
+    }
+
+    return await res.json();
   };
 
   // context/AuthContext.tsx - Add this function
@@ -443,6 +474,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
     pincode,
     setPincode,
+    saveTailorPricing,
   };
 
   return (
