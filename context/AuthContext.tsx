@@ -1,6 +1,6 @@
 // context/AuthContext.tsx -  FIXED "result is not defined"
 import { AuthContextType } from "@/types";
-import { ShopDetailsType } from "@/types/shopDetails";
+import { ShopDetailsType, type Specialization } from "@/types/shopDetails";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
@@ -45,7 +45,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const OTP_COOLDOWN_SECONDS = 60;
 
   //Tailor's additional details
-  const [selectedSpecs, setSelectedSpecs] = useState<string | null>(null);
+  const [selectedSpecs, setSelectedSpecs] = useState<Specialization | null>(
+    null,
+  );
+  const [dressVarieties, setDressVarieties] = useState<string[]>([]);
   const [shopName, setShopName] = useState("");
   const [shopLocation, setShopLocation] = useState("");
   const [houseNo, setHouseNo] = useState("");
@@ -410,6 +413,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const shopDetailsValue: ShopDetailsType = {
     selectedSpecs,
     setSelectedSpecs,
+
+    dressVarieties,
+    setDressVarieties,
 
     shopName,
     setShopName,
