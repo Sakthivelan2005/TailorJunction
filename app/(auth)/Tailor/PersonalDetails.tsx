@@ -6,7 +6,6 @@ import { Images } from "@/config/Images";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/hooks/useToast";
-import { pushNotification } from "@/utils/notificationConfig";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -131,13 +130,8 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
 
   const handlePhoneVerify = async () => {
     try {
-      await sendVerificationCode(phoneNumber);
-      pushNotification(
-        "OTP Sent",
-        "A verification code has been sent to your mobile number.",
-      );
       setOtpVisible(true);
-      showToast("OTP sent successfully.", "success");
+      await sendVerificationCode(phoneNumber);
     } catch (err: any) {
       showToast(error || "Failed to send OTP", "error");
     }
