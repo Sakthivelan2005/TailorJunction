@@ -8,3 +8,20 @@ eas build:configure
 eas build --platform android --profile development
 
 expo install expo-dev-client
+
+
+inserted data into database:|
+INSERT INTO dress_types (dress_id, category, dress_name, dress_image, base_price) VALUES
+(1,'men', 'Men Formal Shirt Stitching', 'images/men/men_formal_shirt.png', 450.00),
+(2,'men', 'Men Blazer Stitching', 'images/men/men_blazer.png', 1800.00),
+(3,'men', 'Men Kurta Stitching', 'images/men/men_kurta.png', 600.00),
+
+(4,'women', 'Women Blouse Stitching', 'images/women/women_blouse.png', 500.00),
+(5,'women', 'Women Designer Blouse', 'images/women/women_designer_blouse.png', 1200.00),
+(6,'women', 'Salwar Kameez Stitching', 'images/women/salwar_kameez.png', 900.00),
+(7,'women', 'Women Lehenga Stitching', 'images/women/women_lehenga.png', 2500.00),
+(8,'women', 'Women Gown Stitching', 'images/women/women_gown.png', 2200.00),
+
+(9,'kids', 'Kids Frock Stitching', 'images/kids/kids_frock.png', 700.00),
+(10,'kids', 'Kids School Uniform Stitching', 'images/kids/kids_uniform.png', 800.00),
+(11,'kids', 'Kids Kurta Pajama', 'images/kids/kids_kurta.png', 650.00)
