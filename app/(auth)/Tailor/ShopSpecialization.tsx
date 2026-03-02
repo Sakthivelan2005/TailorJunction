@@ -1,14 +1,9 @@
 // app/(tailor)/signup/ShopSpecialization.tsx
 
-import { useThemedIcons } from "@/config/Icons";
-import { useShopDetails } from "@/context/AuthContext";
-import { DressVarieties } from "@/data/DressVarieties";
-import { specializations } from "@/data/Specialization";
-import { useToast } from "@/hooks/useToast";
-import { type Specialization } from "@/types/shopDetails";
 import { Ionicons } from "@expo/vector-icons";
+import { Asset } from "expo-asset";
 import * as ImagePicker from "expo-image-picker";
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   Image,
@@ -18,11 +13,37 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
+import { useThemedIcons } from "@/config/Icons";
+import { DressImages, Images } from "@/config/Images";
+import { useAuth, useShopDetails } from "@/context/AuthContext";
+import { specializations } from "@/data/Specialization";
+import { useToast } from "@/hooks/useToast";
+import { type Specialization } from "@/types/shopDetails";
 import TailorSection from "./TailorSection";
 
+/* ---------------- CONFIG ---------------- */
+const API_URL = "http://192.168.1.7:3001";
+
+/* ---------------- TYPES ---------------- */
+type DressType = {
+  dress_id: number;
+  category: "men" | "women" | "kids";
+  dress_name: string;
+  dress_image: string; // DB path (key for DressImages)
+  base_price: number;
+};
+
+/* ---------------- PRELOAD IMAGES (ZERO LATENCY) ---------------- */
+Object.values(DressImages).forEach((img) => {
+  Asset.fromModule(img).downloadAsync();
+});
+
+/* =============================================================== */
 export const ShopSpecialization: React.FC<{ onNext: () => void }> = ({
   onNext,
 }) => {
+  const { userId } = useAuth();
   const {
     selectedSpecs,
     setSelectedSpecs,
@@ -56,10 +77,56 @@ export const ShopSpecialization: React.FC<{ onNext: () => void }> = ({
 
     shopPhoto,
     setShopPhoto,
+
+    saveTailorPricing,
   } = useShopDetails();
 
   const Icons = useThemedIcons();
   const { showToast } = useToast();
+
+  /* ---------------- FETCH DRESS TYPES ---------------- */
+  const [allDressTypes, setAllDressTypes] = useState<DressType[]>([]);
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/dress-types`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (json?.success) setAllDressTypes(json.data);
+      })
+      .catch(console.error);
+  }, []);
+
+  /* ---------------- FILTER BY SPECIALIZATION ---------------- */
+  const availableVarieties = useMemo((): DressType[] => {
+    if (!selectedSpecs) return [];
+
+    switch (selectedSpecs) {
+      case "Gents":
+        return allDressTypes.filter((d) => d.category === "men");
+      case "Ladies":
+        return allDressTypes.filter((d) => d.category === "women");
+      case "Kids":
+        return allDressTypes.filter((d) => d.category === "kids");
+      case "Both":
+        return allDressTypes.filter(
+          (d) => d.category === "men" || d.category === "women",
+        );
+      default:
+        return [];
+    }
+  }, [selectedSpecs, allDressTypes]);
+
+  /* Reset dress selection when specialization changes */
+  useEffect(() => {
+    setDressVarieties([]);
+  }, [selectedSpecs]);
+
+  /* ---------------- TOGGLE DRESS TYPE ---------------- */
+  const toggleDressVariety = (id: number) => {
+    setDressVarieties((prev: number[]) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
 
   /* ---------------- IMAGE PICKER ---------------- */
   const pickImage = async (type: "profile" | "shop") => {
@@ -76,54 +143,32 @@ export const ShopSpecialization: React.FC<{ onNext: () => void }> = ({
     }
   };
 
-  /* ---------------- PINCODE FORMAT ---------------- */
   const formatPincode = (text: string) => text.replace(/\D/g, "").slice(0, 6);
-
-  /* ---------------- DRESS VARIETIES LOGIC ---------------- */
-  const availableVarieties = useMemo(() => {
-    if (!selectedSpecs) return [];
-
-    if (selectedSpecs === "Both") {
-      return [...DressVarieties.Gents, ...DressVarieties.Ladies];
-    }
-
-    return DressVarieties[selectedSpecs] || [];
-  }, [selectedSpecs]);
-
-  /* Reset varieties when specialization changes */
-  useEffect(() => {
-    setDressVarieties([]);
-  }, [selectedSpecs]);
-
-  const toggleDressVariety = (item: string) => {
-    setDressVarieties((prev) =>
-      prev.includes(item) ? prev.filter((v) => v !== item) : [...prev, item],
-    );
-  };
 
   /* ---------------- VALIDATION ---------------- */
   const handleSignup = () => {
-    if (!selectedSpecs) {
-      showToast("Select a specialization", "warning");
-      return;
-    }
+    if (!selectedSpecs) return showToast("Select a specialization", "warning");
 
-    if (!houseNo || !street || !area) {
-      showToast("Please fill shop address", "warning");
-      return;
-    }
+    if (!houseNo || !street || !area)
+      return showToast("Please fill shop address", "warning");
 
-    if (pincode && pincode.length < 6) {
-      showToast("Pincode must be 6 digits", "warning");
-      return;
-    }
+    if (pincode && pincode.length < 6)
+      return showToast("Pincode must be 6 digits", "warning");
 
-    if (dressVarieties.length === 0) {
-      showToast("Select at least one dress variety", "warning");
-      return;
-    }
+    if (dressVarieties.length === 0)
+      return showToast("Select at least one dress type", "warning");
 
-    onNext();
+    saveTailorPricing(userId, dressVarieties, availableVarieties).then(() => {
+      console.log(
+        "userId:",
+        userId,
+        "dressVarieties:",
+        dressVarieties,
+        "availableVarieties:",
+        availableVarieties,
+      );
+      onNext();
+    });
   };
 
   /* ---------------- UI ---------------- */
@@ -132,11 +177,9 @@ export const ShopSpecialization: React.FC<{ onNext: () => void }> = ({
       data={specializations}
       numColumns={2}
       keyExtractor={(item: Specialization) => item}
-      showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.container}
       renderItem={({ item }) => {
         const isSelected = selectedSpecs === item;
-
         return (
           <TouchableOpacity
             style={[styles.specChip, isSelected && styles.specChipActive]}
@@ -274,34 +317,39 @@ export const ShopSpecialization: React.FC<{ onNext: () => void }> = ({
       }
       ListFooterComponent={
         <>
-          {/* DRESS VARIETIES */}
+          {/* DRESS TYPES */}
           {availableVarieties.length > 0 && (
-            <TailorSection title="Dress Varieties Offered">
+            <TailorSection title="Dress Types Offered">
               <View style={styles.varietyWrap}>
-                {availableVarieties.map((item: string) => {
-                  const checked = dressVarieties.includes(item);
+                {availableVarieties.map((dress) => {
+                  const checked = dressVarieties.includes(dress.dress_id);
+                  const imageSource =
+                    DressImages[dress.dress_image] ?? Images.placeholder;
+
                   return (
                     <TouchableOpacity
-                      key={item}
+                      key={dress.dress_id}
                       style={[
                         styles.varietyChip,
                         checked && styles.varietyChipActive,
                       ]}
-                      onPress={() => toggleDressVariety(item)}
+                      onPress={() => toggleDressVariety(dress.dress_id)}
                     >
-                      <Ionicons
-                        name={checked ? "checkbox" : "square-outline"}
-                        size={18}
-                        color={checked ? "#fff" : "#6B7280"}
-                      />
+                      <Image source={imageSource} style={styles.dressImage} />
                       <Text
                         style={[
                           styles.varietyText,
                           checked && styles.varietyTextActive,
                         ]}
                       >
-                        {item}
+                        {dress.dress_name}
                       </Text>
+                      <Text style={styles.price}>₹{dress.base_price}</Text>
+                      <Ionicons
+                        name={checked ? "checkbox" : "square-outline"}
+                        size={18}
+                        color={checked ? "#fff" : "#6B7280"}
+                      />
                     </TouchableOpacity>
                   );
                 })}
@@ -352,7 +400,6 @@ const styles = StyleSheet.create({
     borderColor: "#10B981",
   },
 
-  placeholderText: { color: "#6B7280", fontWeight: "500" },
   photoPlaceholder: {
     height: 140,
     borderRadius: 16,
@@ -362,6 +409,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  placeholderText: { color: "#6B7280", fontWeight: "500" },
 
   specChip: {
     flex: 1,
@@ -399,23 +447,23 @@ const styles = StyleSheet.create({
   specText: { fontWeight: "600", color: "#374151" },
   specTextActive: { color: "#fff" },
 
-  varietyWrap: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  varietyWrap: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   varietyChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 20,
+    width: "48%",
     borderWidth: 2,
     borderColor: "#E5E7EB",
+    borderRadius: 16,
+    padding: 10,
+    alignItems: "center",
   },
   varietyChipActive: {
     backgroundColor: "#10B981",
     borderColor: "#10B981",
   },
-  varietyText: { fontWeight: "600", color: "#374151" },
+  dressImage: { width: 70, height: 70, marginBottom: 6 },
+  varietyText: { fontWeight: "600", textAlign: "center", color: "#374151" },
   varietyTextActive: { color: "#fff" },
+  price: { fontSize: 13, color: "#6B7280", marginBottom: 4 },
 
   signupButton: {
     backgroundColor: "#8B5CF6",
