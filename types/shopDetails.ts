@@ -3,8 +3,9 @@ export interface ShopDetailsType {
   // SHOP DETAILS
   selectedSpecs: Specialization | null;
   setSelectedSpecs: React.Dispatch<React.SetStateAction<Specialization | null>>;
-  dressVarieties: string[];
-  setDressVarieties: React.Dispatch<React.SetStateAction<string[]>>;
+
+  dressVarieties: number[]; // ✅ FIXED
+  setDressVarieties: React.Dispatch<React.SetStateAction<number[]>>;
 
   shopName: string;
   setShopName: (name: string) => void;
@@ -32,4 +33,10 @@ export interface ShopDetailsType {
 
   pincode: string;
   setPincode: (value: string) => void;
+
+  saveTailorPricing: (
+    tailorId: string | undefined,
+    selectedDressIds: number[],
+    allDressTypes: { dress_id: number; base_price: number }[],
+  ) => Promise<void>;
 }
