@@ -1,7 +1,10 @@
+export type Specialization = "Gents" | "Ladies" | "Kids" | "Both";
 export interface ShopDetailsType {
   // SHOP DETAILS
-  selectedSpecs: string | null;
-  setSelectedSpecs: React.Dispatch<React.SetStateAction<string | null>>;
+  selectedSpecs: Specialization | null;
+  setSelectedSpecs: React.Dispatch<React.SetStateAction<Specialization | null>>;
+  dressVarieties: string[];
+  setDressVarieties: React.Dispatch<React.SetStateAction<string[]>>;
 
   shopName: string;
   setShopName: (name: string) => void;
