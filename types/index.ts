@@ -1,4 +1,5 @@
 export interface AuthContextType {
+  API_URL: string;
   phoneNumber: string;
   setPhoneNumber: (phone: string) => void;
   verificationCode: string;
