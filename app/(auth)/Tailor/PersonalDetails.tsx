@@ -100,31 +100,34 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
     if (!validateForm()) {
       showToast("Please correct the highlighted fields.", "warning");
       return;
-    }
+    } else if (!verifiedOtp) {
+      showToast("Please verify your phone number.", "warning");
+      return;
+    } else {
+      setErrors({});
 
-    setErrors({});
+      try {
+        showToast("Creating your account. Please wait...", "success");
 
-    try {
-      showToast("Creating your account. Please wait...", "success");
+        showToast(
+          `Welcome ${fullName}. Your account has been created successfully.`,
+          "success",
+        );
 
-      showToast(
-        `Welcome ${fullName}. Your account has been created successfully.`,
-        "success",
-      );
+        onNext(); // Move to next step after successful signup
+      } catch (err: any) {
+        const errorMessage =
+          err.message || "Registration failed. Please try again.";
 
-      onNext(); // Move to next step after successful signup
-    } catch (err: any) {
-      const errorMessage =
-        err.message || "Registration failed. Please try again.";
+        console.error("Signup failed:", errorMessage);
 
-      console.error("Signup failed:", errorMessage);
+        showToast(errorMessage, "error");
 
-      showToast(errorMessage, "error");
-
-      setErrors({
-        server:
-          "Unable to complete registration at this time. Please try again.",
-      });
+        setErrors({
+          server:
+            "Unable to complete registration at this time. Please try again.",
+        });
+      }
     }
   };
 
