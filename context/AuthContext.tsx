@@ -412,6 +412,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const contextValue: AuthContextType = {
+    API_URL,
     phoneNumber,
     setPhoneNumber,
     verificationCode,
