@@ -1,4 +1,6 @@
+//app/(tailor)/Settings.tsx
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/useToast";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as Notifications from "expo-notifications";
 import React, { useEffect, useState } from "react";
@@ -26,6 +28,7 @@ Notifications.setNotificationHandler({
 export default function SettingsScreen() {
   const { userId, API_URL } = useAuth();
 
+  const { showToast } = useToast();
   // State for the Alarm (Shop Closing Time)
   const [alarmTime, setAlarmTime] = useState(
     new Date(new Date().setHours(21, 30, 0, 0)),
@@ -70,6 +73,7 @@ export default function SettingsScreen() {
   };
 
   // Schedule the local notification
+  // Schedule the local notification
   const scheduleClosingAlarm = async (time: Date) => {
     // Cancel previously scheduled alarms first to avoid duplicates
     await Notifications.cancelAllScheduledNotificationsAsync();
@@ -77,23 +81,28 @@ export default function SettingsScreen() {
     const hours = time.getHours();
     const minutes = time.getMinutes();
 
+    // Dynamically build the trigger to keep both Android and TypeScript happy
+    const triggerData: any = {
+      hour: hours,
+      minute: minutes,
+      repeats: true,
+    };
+
+    // Only attach the channelId if we are on Android
+    if (Platform.OS === "android") {
+      triggerData.channelId = "closing-alarm";
+    }
+
     await Notifications.scheduleNotificationAsync({
       content: {
         title: "⏰ Time to close up!",
         body: "Your shop closing time has arrived. Great work today!",
         sound: true,
       },
-      // ✅ FIX 2: Explicitly define the trigger 'type' and 'channelId' for Android
-      trigger: {
-        type: "calendar",
-        hour: hours,
-        minute: minutes,
-        repeats: true,
-        channelId: "closing-alarm", // Links to the channel we created in useEffect
-      } as any,
+      trigger: triggerData,
     });
 
-    Alert.alert("Alarm Set", `Closing alarm set for ${formatTime(time)}`);
+    showToast(`Closing alarm set for ${formatTime(time)}`, "success");
   };
 
   // Sync Auto-Unavailable setting with backend
