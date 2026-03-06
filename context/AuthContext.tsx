@@ -11,6 +11,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
+import io, { Socket } from "socket.io-client";
 
 const API_URL = "http://192.168.1.7:3001";
 
@@ -22,6 +23,8 @@ const ShopDetailsContext = createContext<ShopDetailsType | undefined>(
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
+  // Socket state (if you need to use it in multiple components, consider moving to its own context)
+  const [socket, setSocket] = useState<Socket | null>(null);
   // AUTH STATES
   const [phoneNumber, setPhoneNumber] = useState<string>("");
   const [verificationCode, setVerificationCode] = useState<string>("");
@@ -29,6 +32,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [verifiedOtp, setVerifiedOtp] = useState<boolean>(false);
   const [fullName, setFullName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
+  const [dob, setDob] = useState<Date | null>(null);
   const [password, setPassword] = useState<string>("");
   const [currentStep, setCurrentStep] = useState<
     "login" | "verification" | "signup" | "home"
@@ -50,7 +54,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   );
   const [dressVarieties, setDressVarieties] = useState<number[]>([]);
   const [shopName, setShopName] = useState("");
-  const [shopLocation, setShopLocation] = useState("");
   const [houseNo, setHouseNo] = useState("");
   const [street, setStreet] = useState("");
   const [area, setArea] = useState("");
@@ -58,6 +61,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [district, setDistrict] = useState("Chennai");
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [shopPhoto, setShopPhoto] = useState<string | null>(null);
+
+  //Creating the connection when the context mounts
+  useEffect(() => {
+    // Connect to the server
+    const newSocket = io(API_URL);
+
+    newSocket.on("connect", () => {
+      console.log("🟢 Connected to WebSocket Server:", newSocket.id);
+    });
+
+    newSocket.on("disconnect", () => {
+      console.log("🔴 Disconnected from WebSocket Server");
+    });
+
+    setSocket(newSocket);
+
+    // Cleanup on unmount
+    return () => {
+      newSocket.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    console.log("Role updated:", role);
+  }, [role]);
 
   const signupUser = async (signupData: any): Promise<any> => {
     const controller = new AbortController();
@@ -279,6 +307,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         email: email.trim(),
         fullName: fullName.trim(),
         password,
+        dob: dob ? dob.toISOString().split("T")[0] : null,
       };
 
       console.log("📤 Sending signup data:", signupData);
@@ -319,7 +348,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       formData.append(area ? "area" : "area", area);
       formData.append(district ? "district" : "district", district);
       formData.append(pincode ? "pincode" : "pincode", pincode);
-      formData.append("location", shopLocation);
 
       if (profilePhoto) {
         formData.append("profilePhoto", {
@@ -396,6 +424,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     setCurrentStep("login");
     setError("");
     setIsLoading(false);
+    setDob(null);
+    setVerifiedOtp(false);
   };
 
   const handleLogin = async (): Promise<void> => {
@@ -413,6 +443,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   const contextValue: AuthContextType = {
     API_URL,
+    socket,
     phoneNumber,
     setPhoneNumber,
     verificationCode,
@@ -426,9 +457,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     setEmail,
     password,
     setPassword,
+    dob,
+    setDob,
     currentStep,
     setCurrentStep,
     userId,
+    setUserId,
     role,
     setRole,
     isLoading,
@@ -451,9 +485,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
     shopName,
     setShopName,
-
-    shopLocation,
-    setShopLocation,
 
     houseNo,
     setHouseNo,
