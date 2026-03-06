@@ -1,5 +1,8 @@
+import { Socket } from "socket.io-client";
+
 export interface AuthContextType {
   API_URL: string;
+  socket: Socket | null;
   phoneNumber: string;
   setPhoneNumber: (phone: string) => void;
   verificationCode: string;
@@ -13,12 +16,15 @@ export interface AuthContextType {
   setEmail: (email: string) => void;
   password: string;
   setPassword: (password: string) => void;
+  dob: Date | null;
+  setDob: (dob: Date | null) => void;
   currentStep: "login" | "verification" | "signup" | "home";
   setCurrentStep: (step: AuthContextType["currentStep"]) => void;
   checkPhoneExists: (phone: string) => Promise<boolean>;
 
   // MySQL integration
   userId?: string;
+  setUserId: (id: string) => void;
   role?: "customer" | "tailor";
   setRole: (role: "customer" | "tailor") => void;
   isLoading: boolean;
