@@ -68,7 +68,7 @@ export default function CustomerLayout() {
         />
 
         <Tabs.Screen
-          name="tracking"
+          name="Order"
           options={{
             tabBarIcon: ({ color, focused }) => (
               <MaterialCommunityIcons
@@ -80,10 +80,24 @@ export default function CustomerLayout() {
           }}
         />
 
+        <Tabs.Screen
+          name="contact"
+          options={{
+            tabBarIcon: ({ color, focused }) => (
+              <MaterialCommunityIcons
+                name="account-circle-outline"
+                size={26}
+                color={color}
+              />
+            ),
+          }}
+        />
+
         {/* Hidden screens */}
         <Tabs.Screen name="dress" options={{ href: null }} />
+        <Tabs.Screen name="Chat" options={{ href: null }} />
+        <Tabs.Screen name="profile" options={{ href: null }} />
         <Tabs.Screen name="measurements" options={{ href: null }} />
-        <Tabs.Screen name="Order" options={{ href: null }} />
         <Tabs.Screen name="payment" options={{ href: null }} />
         <Tabs.Screen name="review" options={{ href: null }} />
       </Tabs>
