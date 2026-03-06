@@ -1,3 +1,4 @@
+//app/(tailor)/Profile.tsx
 import { useAuth } from "@/context/AuthContext";
 import React, { useEffect, useState } from "react";
 import {
@@ -29,9 +30,12 @@ interface ProfileData {
 }
 
 export default function ProfileScreen() {
-  const { userId, API_URL } = useAuth();
   const [data, setData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const { userId, API_URL } = useAuth();
+
+  const ImagePath = "@/Backend/src"; // Base path for images from backend
 
   useEffect(() => {
     fetchProfile();
@@ -56,6 +60,7 @@ export default function ProfileScreen() {
   const { details, pricing } = data;
   const address = `${details.house_no}, ${details.street}, ${details.area}, ${details.district} - ${details.pincode}`;
 
+  console.log("Profile Image URL:", `${API_URL}${details.profile_photo}`);
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.headerTitle}>Profile</Text>
@@ -64,7 +69,7 @@ export default function ProfileScreen() {
         <View style={styles.avatarRow}>
           <Image
             source={{
-              uri: details.profile_photo || "https://via.placeholder.com/60",
+              uri: `${API_URL}${details.profile_photo}`,
             }}
             style={styles.avatar}
           />
