@@ -92,6 +92,21 @@ export default function TailorLayout() {
             ),
           }}
         />
+
+        <Tabs.Screen
+          name="Chat"
+          options={{
+            href: null,
+            headerShown: false,
+          }}
+        />
+        <Tabs.Screen
+          name="Measurements"
+          options={{
+            href: null,
+            headerShown: false,
+          }}
+        />
       </Tabs>
     </SafeAreaView>
   );
