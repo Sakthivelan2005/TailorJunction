@@ -6,6 +6,7 @@ import {
     getSettings,
     updateAutoCloseSetting,
     updateAvailability,
+    updateOrderStatus,
 } from "../controllers/tailor.controller.js";
 
 const router = express.Router();
@@ -16,5 +17,6 @@ router.get("/:tailorId/profile", getProfile);
 router.get("/:tailorId/settings", getSettings);
 router.put("/:tailorId/status", updateAvailability);
 router.put("/:tailorId/auto-close", updateAutoCloseSetting);
+router.put("/orders/:orderId/status", updateOrderStatus);
 
 export default router;
