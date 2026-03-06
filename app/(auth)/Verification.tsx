@@ -1,8 +1,8 @@
 // verification.tsx - TOAST INTEGRATED
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { ToastProvider, useToast } from "@/hooks/useToast"; // ✅ NEW
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
@@ -31,7 +31,7 @@ const VerificationScreenContent = () => {
   const [canResend, setCanResend] = useState(false);
   const [error, setError] = useState("");
   const [otpExpired, setOtpExpired] = useState(false);
-  const colors = Colors["light"];
+  const { colors } = useTheme();
 
   useEffect(() => {
     const subscription = Notifications.addNotificationReceivedListener(
@@ -114,7 +114,12 @@ const VerificationScreenContent = () => {
     >
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} bounces={false}>
         <ThemedView
-          style={{ flex: 1, padding: 20, justifyContent: "space-between" }}
+          style={{
+            flex: 1,
+            padding: 20,
+            justifyContent: "space-between",
+            backgroundColor: colors.text,
+          }}
         >
           <View style={{ marginTop: 30 }}>
             <ThemedText
