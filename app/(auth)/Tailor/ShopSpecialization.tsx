@@ -54,9 +54,6 @@ export const ShopSpecialization: React.FC<{ onNext: () => void }> = ({
     shopName,
     setShopName,
 
-    shopLocation,
-    setShopLocation,
-
     houseNo,
     setHouseNo,
 
@@ -209,18 +206,6 @@ export const ShopSpecialization: React.FC<{ onNext: () => void }> = ({
                   placeholderTextColor={styles.placeholderText.color}
                   value={shopName}
                   onChangeText={setShopName}
-                />
-              </View>
-
-              <View style={styles.locationInput}>
-                {Icons.location}
-                <TextInput
-                  style={styles.locationTextInput}
-                  placeholder="Enter complete shop address"
-                  placeholderTextColor={styles.placeholderText.color}
-                  value={shopLocation}
-                  onChangeText={setShopLocation}
-                  multiline
                 />
               </View>
 

@@ -1,4 +1,4 @@
-// app/(auth)/personalDetails.tsx - UPDATED VALIDATION + PROFESSIONAL MESSAGES
+// app/(auth)/personalDetails.tsx
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
@@ -6,6 +6,7 @@ import { Images } from "@/config/Images";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/hooks/useToast";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -20,8 +21,6 @@ import {
 } from "react-native";
 
 const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
-  const labelColor = "#000000";
-  const { colors } = useTheme();
   const {
     fullName,
     setFullName,
@@ -33,6 +32,8 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
     setPhoneNumber,
     otp,
     setOtp,
+    dob,
+    setDob,
     sendVerificationCode,
     verifyOtp,
     verifiedOtp,
@@ -42,6 +43,9 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
     checkPhoneExists,
   } = useAuth();
 
+  const labelColor = "#000000";
+  const { colors } = useTheme();
+
   const { showToast } = useToast();
 
   const [errors, setErrors] = useState<{
@@ -50,11 +54,12 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
     password?: string;
     phone?: string;
     server?: string;
+    dob?: string;
   }>({});
 
   const [showPassword, setShowPassword] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
-
+  const [showDobPicker, setShowDobPicker] = useState(false);
   const [otpVisible, setOtpVisible] = useState(false);
 
   const validateForm = () => {
@@ -84,6 +89,7 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
     } else if (!validatePhone(phoneNumber)) {
       newErrors.phone = "Please enter a valid 10-digit mobile number.";
     }
+    if (!dob) newErrors.dob = "Please select your date of birth.";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -93,6 +99,14 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
     const clean = text.replace(/\D/g, "");
     if (clean.length <= 5) return clean;
     return `${clean.slice(0, 5)} ${clean.slice(5, 10)}`;
+  };
+
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    setShowDobPicker(Platform.OS === "ios");
+    if (selectedDate) {
+      setDob(selectedDate);
+      clearLocalError("dob");
+    }
   };
 
   const handleSignUp = async () => {
@@ -195,8 +209,7 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
   };
 
   const handleBackToLogin = () => {
-    resetAuth();
-    router.navigate("/Tailor/login");
+    router.navigate("/tailor/login");
   };
   return (
     <KeyboardAvoidingView
@@ -416,6 +429,42 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
             )}
             {!errors.email && <View style={{ marginBottom: 16 }} />}
 
+            {/* Date of Birth Picker */}
+            <ThemedText style={{ marginBottom: 8, color: labelColor }}>
+              Date of Birth
+            </ThemedText>
+            <TouchableOpacity
+              onPress={() => setShowDobPicker(true)}
+              style={{
+                paddingHorizontal: 12,
+                paddingVertical: 14,
+                borderWidth: 1,
+                borderColor: errors.dob ? "#EF4444" : "#494545",
+                borderRadius: 8,
+                backgroundColor: colors.background,
+                marginBottom: 4,
+              }}
+            >
+              <ThemedText style={{ color: dob ? colors.text : colors.primary }}>
+                {dob ? dob.toLocaleDateString() : "Select your date of birth"}
+              </ThemedText>
+            </TouchableOpacity>
+            {showDobPicker && (
+              <DateTimePicker
+                value={dob || new Date()}
+                mode="date"
+                display="default"
+                maximumDate={new Date()} // Prevent picking future dates
+                onChange={handleDateChange}
+              />
+            )}
+            {errors.dob && (
+              <ThemedText style={{ marginBottom: 16, color: "#EF4444" }}>
+                {errors.dob}
+              </ThemedText>
+            )}
+            {!errors.dob && <View style={{ marginBottom: 16 }} />}
+
             <ThemedText style={{ marginBottom: 8, color: labelColor }}>
               Password
             </ThemedText>
@@ -488,9 +537,13 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
                 alignItems: "center",
               }}
             >
-              <ThemedText>Already have an account?</ThemedText>
+              <ThemedText style={{ color: colors.text }}>
+                Already have an account?
+              </ThemedText>
               <TouchableOpacity onPress={handleBackToLogin}>
-                <ThemedText style={{ fontWeight: "600" }}>Log in</ThemedText>
+                <ThemedText style={{ fontWeight: "600", color: colors.text }}>
+                  Log in
+                </ThemedText>
               </TouchableOpacity>
             </View>
           </ThemedView>
