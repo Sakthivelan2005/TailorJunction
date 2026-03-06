@@ -1,6 +1,7 @@
 export const Images = {
   verified: require("../assets/images/verified.png"),
   placeholder: require("../assets/images/placeholder.jpeg"),
+  location: require("../assets/images/location.png"),
 };
 
 // config/Images.ts
