@@ -11,12 +11,12 @@ import PersonalDetails from "./PersonalDetails";
 import { ShopSpecialization } from "./ShopSpecialization";
 
 export default function TailorSignup() {
-  const { setRole, completeSignup, completeTailorDetails } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<"personal" | "shop">(
     "personal",
   );
   const { colors } = useTheme();
 
+  const { setRole, completeSignup, completeTailorDetails } = useAuth();
   useEffect(() => {
     setRole("tailor");
   }, [setRole]);
@@ -50,7 +50,7 @@ export default function TailorSignup() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header title="Sign Up" onBackPress={() => router.back()} />
+      <Header title="Sign Up" onBackPress={() => router.push("/")} />
 
       <View style={styles.content}>
         {currentScreen === "personal" ? (
