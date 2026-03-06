@@ -1,10 +1,11 @@
-// app/(auth)/login.tsx - ✅ NO API CALLS - LOCAL PHONE CHECK
+// app/(auth)/login.tsx
+import Header from "@/components/Header";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { Colors } from "@/constants/theme";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -12,91 +13,100 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  useColorScheme,
   View,
 } from "react-native";
 
 const LoginScreen = () => {
-  const {
-    phoneNumber,
-    setPhoneNumber,
-    sendVerificationCode,
-    checkPhoneExists,
-  } = useAuth();
+  const labelColor = "#000000";
+  const { colors } = useTheme();
+  const { setUserId, setRole, setCurrentStep, API_URL } = useAuth();
 
-  const [errors, setErrors] = useState<{ phone?: string }>({});
-  const [checkingPhone, setCheckingPhone] = useState(false);
-  const [phoneExists, setPhoneExists] = useState<boolean | null>(null);
-  const [registeredUsers, setRegisteredUsers] = useState<string[]>([]); // Local storage
-  const colorScheme = useColorScheme();
-  const colors = Colors["light"];
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // ✅ CHECK PHONE WHEN IT CHANGES (LOCAL - NO API)
-  useEffect(() => {
-    const checkPhone = () => {
-      const cleanPhone = phoneNumber.replace(/\D/g, "");
+  const [errors, setErrors] = useState<{
+    identifier?: string;
+    password?: string;
+    server?: string;
+  }>({});
 
-      if (cleanPhone.length === 10) {
-        setCheckingPhone(true);
+  const validateForm = () => {
+    const newErrors: typeof errors = {};
+    const trimmedId = identifier.trim();
+    const isPhone = /^\d{10}$/.test(trimmedId);
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedId);
 
-        // ✅ LOCAL CHECK - No API call
-        setTimeout(async () => {
-          const exists = await checkPhoneExists(phoneNumber);
-          console.log("🔍 LOCAL CHECK:", cleanPhone, "exists:", exists);
-          setPhoneExists(exists);
-          setCheckingPhone(false);
-        }, 800); // Simulate network delay
-      } else {
-        setPhoneExists(null);
-      }
-    };
-
-    const timeoutId = setTimeout(checkPhone, 500);
-    return () => clearTimeout(timeoutId);
-  }, [phoneNumber]);
-
-  const validatePhone = () => {
-    const cleanPhone = phoneNumber.replace(/\D/g, "");
-    console.log("cleanPhone:", cleanPhone.slice(0, 10));
-    if (cleanPhone.length !== 10) {
-      setErrors({ phone: "Enter valid 10-digit phone number" });
-      return false;
+    if (!trimmedId) {
+      newErrors.identifier = "Please enter your Mobile Number or Email.";
+    } else if (!isPhone && !isEmail) {
+      newErrors.identifier =
+        "Please enter a valid 10-digit phone number or email.";
     }
+
+    if (!password) {
+      newErrors.password = "Password is required.";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const clearLocalError = (field: keyof typeof errors) => {
+    setErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  };
+
+  const handleLogin = async () => {
+    if (!validateForm()) return;
+
+    setIsLoading(true);
     setErrors({});
-    return true;
+
+    try {
+      const response = await fetch(`${API_URL}/api/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          identifier: identifier.trim(),
+          role: "tailor", // Assuming this login is for tailors; adjust as needed
+          password: password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Invalid credentials");
+      }
+      console.log("Login successful, received data:", data);
+      // ✅ SUCCESS: Update Context & Navigate
+      setUserId(data.userId);
+      setRole(data.role);
+      setCurrentStep("home");
+
+      if (data.success) {
+        router.replace("/(tailor)/Home");
+      }
+    } catch (err: any) {
+      console.error("Login failed:", err.message);
+      setErrors({
+        server: err.message || "Network error. Please try again.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleContinue = async () => {
-    if (!validatePhone()) return;
-
-    if (checkingPhone) return;
-
-    if (phoneExists === null) {
-      setErrors({ phone: "Checking phone number..." });
-      return;
-    }
-
-    if (phoneExists === true) {
-      // ✅ EXISTING USER → SEND OTP
-      console.log("✅ Account found! Sending OTP...");
-      await sendVerificationCode(phoneNumber);
-      router.push("/(auth)/Verification");
-    } else {
-      // ✅ NEW USER → SIGNUP
-      setErrors({ phone: "No account found. Please sign up first!" });
-      // Auto-redirect to signup after 2s
-      setTimeout(() => {
-        router.push("/(auth)/signup");
-      }, 1000 * 60);
-    }
-  };
-
-  const formatPhoneInput = (value: string): string => {
-    const cleaned = value.replace(/\D/g, "");
-    if (cleaned.length <= 5) return cleaned;
-    if (cleaned.length <= 10)
-      return `${cleaned.slice(0, 5)} ${cleaned.slice(5)}`;
-    return `${cleaned.slice(0, 5)} ${cleaned.slice(5, 10)}`;
+  const handleBackToSignup = () => {
+    router.push("/(auth)/tailor/signup"); // Adjust this route to match your actual signup wrapper/page
   };
 
   return (
@@ -104,149 +114,176 @@ const LoginScreen = () => {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={{ flex: 1 }}
     >
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }} bounces={false}>
+      <Header title="Login" onBackPress={() => router.push("/")} />
+
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
+        bounces={false}
+        showsVerticalScrollIndicator={false}
+      >
         <ThemedView
           style={{
             flex: 1,
             padding: 20,
-            justifyContent: "space-between",
-            backgroundColor: colors.text,
+            backgroundColor: colors.primary,
+            justifyContent: "center",
           }}
         >
-          {/* Header */}
-          <View style={{ marginTop: 40 }}>
+          {errors.server && (
+            <View
+              style={{
+                backgroundColor: "#FEE2E2",
+                padding: 12,
+                borderRadius: 8,
+                borderLeftWidth: 4,
+                borderLeftColor: "#EF4444",
+                marginBottom: 16,
+                marginHorizontal: 15,
+              }}
+            >
+              <ThemedText style={{ color: "#DC2626", fontWeight: "500" }}>
+                {errors.server}
+              </ThemedText>
+            </View>
+          )}
+
+          <ThemedView
+            style={{
+              padding: 20,
+              backgroundColor: "rgba(255, 255, 255, 0.79)",
+              borderRadius: 26,
+              margin: 15,
+            }}
+          >
             <ThemedText
-              style={{ fontSize: 24, fontWeight: "bold", marginBottom: 8 }}
+              style={{
+                fontSize: 24,
+                fontWeight: "bold",
+                marginBottom: 20,
+                textAlign: "center",
+                color: labelColor,
+              }}
             >
               Welcome Back
             </ThemedText>
-            <ThemedText>Enter your phone number to continue</ThemedText>
 
-            {/* Phone Number Input */}
-            <ThemedText style={{ marginTop: 32, marginBottom: 8 }}>
-              Phone Number (+91)
+            {/* Email / Mobile Input */}
+            <ThemedText style={{ marginBottom: 8, color: labelColor }}>
+              Mobile / Email ID
             </ThemedText>
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              <View
-                style={{
-                  paddingHorizontal: 12,
-                  paddingVertical: 12,
-                  borderWidth: 1,
-                  borderColor: colors.tabIconDefault,
-                  borderRadius: 8,
-                  backgroundColor: colors.tint,
-                }}
-              >
-                <ThemedText style={{ fontWeight: "600" }}>+91</ThemedText>
-              </View>
-              <TextInput
-                placeholder="73054 18555"
-                value={formatPhoneInput(phoneNumber)}
-                onChangeText={(text) => {
-                  const cleanNumber = text.replace(/\D/g, "");
-                  setPhoneNumber(cleanNumber.slice(0, 10));
-                }}
-                keyboardType="phone-pad"
-                maxLength={14}
-                editable={!checkingPhone}
-                style={{
-                  flex: 1,
-                  paddingHorizontal: 12,
-                  paddingVertical: 12,
-                  borderWidth: 1,
-                  borderColor: errors.phone
-                    ? "#EF4444"
-                    : checkingPhone
-                      ? "#F59E0B"
-                      : colors.tabIconDefault,
-                  borderRadius: 8,
-                  backgroundColor: colors.background,
-                  fontSize: 16,
-                }}
-                placeholderTextColor={colors.tint}
-              />
-            </View>
-
-            {/* Status Messages */}
-            {checkingPhone && (
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  marginTop: 8,
-                  gap: 8,
-                }}
-              >
-                <ActivityIndicator size="small" color="#F59E0B" />
-                <ThemedText style={{ color: "#F59E0B" }}>
-                  Checking phone number...
-                </ThemedText>
-              </View>
-            )}
-
-            {phoneExists === true && (
-              <ThemedText
-                style={{ marginTop: 8, color: "#10B981", fontWeight: "500" }}
-              >
-                ✅ Account found! Send OTP to login.
-              </ThemedText>
-            )}
-
-            {errors.phone && (
-              <ThemedText style={{ marginTop: 8, color: "#EF4444" }}>
-                {errors.phone}
-              </ThemedText>
-            )}
-          </View>
-
-          {/* Buttons */}
-          <View style={{ marginBottom: 30 }}>
-            <TouchableOpacity
-              onPress={handleContinue}
-              disabled={checkingPhone}
+            <TextInput
+              placeholder="Enter your Mobile Number or Email ID"
+              value={identifier}
+              onChangeText={(text) => {
+                setIdentifier(text);
+                clearLocalError("identifier");
+              }}
+              autoCapitalize="none"
+              keyboardType="email-address"
               style={{
-                backgroundColor: checkingPhone ? "#D1D5DB" : colors.tint,
-                paddingVertical: 16,
-                borderRadius: 12,
-                marginBottom: 16,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                borderWidth: 1,
+                borderColor: errors.identifier ? "#EF4444" : "#494545",
+                borderRadius: 8,
+                backgroundColor: colors.background,
+                marginBottom: 4,
+                color: colors.text,
+              }}
+              placeholderTextColor={colors.primary}
+            />
+            {errors.identifier && (
+              <ThemedText style={{ marginBottom: 16, color: "#EF4444" }}>
+                {errors.identifier}
+              </ThemedText>
+            )}
+            {!errors.identifier && <View style={{ marginBottom: 16 }} />}
+
+            {/* Password Input */}
+            <ThemedText style={{ marginBottom: 8, color: labelColor }}>
+              Password
+            </ThemedText>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                borderWidth: 1,
+                borderColor: errors.password ? "#EF4444" : "#494545",
+                borderRadius: 8,
+                backgroundColor: colors.background,
+                paddingHorizontal: 12,
+                marginBottom: 4,
               }}
             >
-              {checkingPhone ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : phoneExists === true ? (
-                <ThemedText
-                  style={{
-                    textAlign: "center",
-                    fontWeight: "600",
-                    color: colors.background,
-                  }}
-                >
-                  Send OTP
+              <TextInput
+                placeholder="Enter your password"
+                value={password}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  clearLocalError("password");
+                }}
+                secureTextEntry={!showPassword}
+                style={{ flex: 1, paddingVertical: 10, color: colors.text }}
+                placeholderTextColor={colors.primary}
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                <ThemedText style={{ fontSize: 16 }}>
+                  {showPassword ? "Show" : "Hide"}
                 </ThemedText>
+              </TouchableOpacity>
+            </View>
+            {errors.password && (
+              <ThemedText style={{ marginBottom: 16, color: "#EF4444" }}>
+                {errors.password}
+              </ThemedText>
+            )}
+            {!errors.password && <View style={{ marginBottom: 16 }} />}
+
+            {/* Login Button */}
+            <TouchableOpacity
+              onPress={handleLogin}
+              disabled={isLoading}
+              style={{
+                backgroundColor: isLoading ? "#9CA3AF" : "#0a7ea4",
+                paddingVertical: 14,
+                borderRadius: 8,
+                marginBottom: 20,
+              }}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#FFFFFF" />
               ) : (
                 <ThemedText
                   style={{
                     textAlign: "center",
                     fontWeight: "600",
-                    color: colors.background,
+                    color: "#FFFFFF",
                   }}
                 >
-                  Continue
+                  Log in
                 </ThemedText>
               )}
             </TouchableOpacity>
 
+            {/* Footer */}
             <View
-              style={{ flexDirection: "row", justifyContent: "center", gap: 4 }}
+              style={{
+                flexDirection: "row",
+                justifyContent: "center",
+                gap: 4,
+                alignItems: "center",
+              }}
             >
-              <ThemedText>New user?</ThemedText>
-              <TouchableOpacity onPress={() => router.back()}>
-                <ThemedText style={{ fontWeight: "600", color: colors.tint }}>
-                  Create Account
+              <ThemedText style={{ color: colors.text }}>
+                Don't have an account?
+              </ThemedText>
+              <TouchableOpacity onPress={handleBackToSignup}>
+                <ThemedText style={{ fontWeight: "600", color: colors.text }}>
+                  Sign up
                 </ThemedText>
               </TouchableOpacity>
             </View>
-          </View>
+          </ThemedView>
         </ThemedView>
       </ScrollView>
     </KeyboardAvoidingView>
