@@ -1,4 +1,6 @@
+//app/(tailor)/Home.tsx
 import { useAuth } from "@/context/AuthContext";
+import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -30,10 +32,15 @@ interface DashboardData {
 }
 
 export default function HomeScreen() {
-  const { userId, resetAuth, API_URL } = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAvailable, setIsAvailable] = useState(false);
+
+  const { userId, resetAuth, API_URL } = useAuth();
+  console.log(
+    "Checking dashborad URL",
+    `${API_URL}/api/tailor/${userId}/dashboard`,
+  ); // Debug log for userId
 
   useEffect(() => {
     fetchDashboardData();
@@ -71,6 +78,11 @@ export default function HomeScreen() {
     }
   };
 
+  const handleLogout = () => {
+    resetAuth();
+    router.push("/(auth)/tailor/login");
+  };
+
   if (loading) return <ActivityIndicator size="large" style={styles.loader} />;
   if (!data) return <Text style={styles.errorText}>No data found</Text>;
 
@@ -81,8 +93,7 @@ export default function HomeScreen() {
         <View style={styles.profileInfo}>
           <Image
             source={{
-              uri:
-                data.profile.profile_photo || "https://via.placeholder.com/60",
+              uri: `${API_URL}${data.profile.profile_photo}`,
             }}
             style={styles.avatar}
           />
@@ -133,7 +144,7 @@ export default function HomeScreen() {
         Experience in app: {data.stats.daysInApp} Days
       </Text>
 
-      <TouchableOpacity style={styles.logoutBtn} onPress={resetAuth}>
+      <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
         <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
     </ScrollView>
