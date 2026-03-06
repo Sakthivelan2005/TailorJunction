@@ -25,3 +25,22 @@ INSERT INTO dress_types (dress_id, category, dress_name, dress_image, base_price
 (9,'kids', 'Kids Frock Stitching', 'images/kids/kids_frock.png', 700.00),
 (10,'kids', 'Kids School Uniform Stitching', 'images/kids/kids_uniform.png', 800.00),
 (11,'kids', 'Kids Kurta Pajama', 'images/kids/kids_kurta.png', 650.00)
+
+//Added is_auto_close_enabled column for automatic turn to unavailable
+ALTER TABLE tailor_shop_profile 
+ADD COLUMN is_auto_close_enabled BOOLEAN DEFAULT TRUE;
+
+//Added column Date of Birth in users table
+ALTER TABLE users ADD COLUMN dob DATE AFTER email;
+
+Installing Socket.io
+We need the library on both backend and frontend.
+
+Backend Terminal: 
+npm install socket.io
+
+Frontend (React Native) Terminal:
+npm install socket.io-client
+
+//For listening events occurs in database
+npm install @rodrigogs/mysql-events
