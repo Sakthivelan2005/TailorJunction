@@ -79,12 +79,12 @@ export default function WelcomeScreen() {
       <View style={styles.buttonSection}>
         <NavigationButton
           title="Tailors"
-          href={"/(auth)/Tailor/signup"}
+          href={"/(auth)/tailor/signup"}
           colorScheme="tailor"
         />
         <NavigationButton
           title="Customer"
-          href={"/(auth)/signup"}
+          href={"/(auth)/customer/signup"}
           colorScheme="customer"
         />
       </View>
