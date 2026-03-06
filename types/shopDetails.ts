@@ -10,9 +10,6 @@ export interface ShopDetailsType {
   shopName: string;
   setShopName: (name: string) => void;
 
-  shopLocation: string;
-  setShopLocation: (location: string) => void;
-
   houseNo: string;
   setHouseNo: (value: string) => void;
 
