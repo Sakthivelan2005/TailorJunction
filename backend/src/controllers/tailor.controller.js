@@ -194,8 +194,35 @@ export const updateAvailability = async (req, res) => {
       `UPDATE tailor_shop_profile SET availability_status = ? WHERE tailor_id = ?`,
       [status, tailorId],
     );
+
+    // BROADCAST TO ALL CUSTOMERS INSTANTLY
+    req.io.emit("tailorStatusChanged", { tailorId, status });
+
     res.json({ message: "Status updated successfully" });
   } catch (error) {
     res.status(500).json({ error: "Failed to update status" });
+  }
+};
+
+// --- UPDATE ORDER STATUS (Tailor Accepting/Completing) ---
+export const updateOrderStatus = async (req, res) => {
+  const { orderId } = req.params;
+  const { status } = req.body; // 'accepted', 'completed', etc.
+
+  try {
+    await db.query(`UPDATE orders SET order_status = ? WHERE order_id = ?`, [
+      status,
+      orderId,
+    ]);
+
+    // 🚀 Instantly tell the customer their order progress bar should move!
+    req.io.emit("orderStatusUpdated", { orderId: Number(orderId), status });
+
+    res.json({ success: true, message: `Order marked as ${status}` });
+  } catch (error) {
+    console.error("Error updating order:", error);
+    res
+      .status(500)
+      .json({ success: false, error: "Failed to update order status" });
   }
 };
