@@ -42,5 +42,5 @@ npm install socket.io
 Frontend (React Native) Terminal:
 npm install socket.io-client
 
-//For listening events occurs in database
+//package which allows Node to listen to MySQL native events:
 npm install @rodrigogs/mysql-events
