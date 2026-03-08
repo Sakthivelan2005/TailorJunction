@@ -1,4 +1,4 @@
-// context/AuthContext.tsx -  FIXED "result is not defined"
+// context/AuthContext.tsx
 import { AuthContextType } from "@/types";
 import { ShopDetailsType, type Specialization } from "@/types/shopDetails";
 import * as Device from "expo-device";
@@ -23,9 +23,7 @@ const ShopDetailsContext = createContext<ShopDetailsType | undefined>(
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  // Socket state (if you need to use it in multiple components, consider moving to its own context)
   const [socket, setSocket] = useState<Socket | null>(null);
-  // AUTH STATES
   const [phoneNumber, setPhoneNumber] = useState<string>("");
   const [verificationCode, setVerificationCode] = useState<string>("");
   const [otp, setOtp] = useState<string>("");
@@ -42,29 +40,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
 
-  // OTP rate limiting states
   const [otpAttempts, setOtpAttempts] = useState(0);
   const [lastOtpSentAt, setLastOtpSentAt] = useState<number | null>(null);
   const MAX_OTP_ATTEMPTS = 5;
   const OTP_COOLDOWN_SECONDS = 60;
 
-  //Tailor's additional details
   const [selectedSpecs, setSelectedSpecs] = useState<Specialization | null>(
     null,
   );
   const [dressVarieties, setDressVarieties] = useState<number[]>([]);
   const [shopName, setShopName] = useState("");
+  const [mapLink, setMapLink] = useState("");
   const [houseNo, setHouseNo] = useState("");
   const [street, setStreet] = useState("");
   const [area, setArea] = useState("");
   const [pincode, setPincode] = useState("");
-  const [district, setDistrict] = useState("Chennai");
+  const [district, setDistrict] = useState("");
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [shopPhoto, setShopPhoto] = useState<string | null>(null);
 
-  //Creating the connection when the context mounts
   useEffect(() => {
-    // Connect to the server
     const newSocket = io(API_URL);
 
     newSocket.on("connect", () => {
@@ -77,11 +72,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
     setSocket(newSocket);
 
-    // Cleanup on unmount
     return () => {
       newSocket.disconnect();
     };
   }, []);
+
+  useEffect(() => {
+    if (!socket || !userId) return;
+
+    // 1. If we are already connected right now, join the room immediately.
+    if (socket.connected) {
+      socket.emit("joinUserRoom", userId);
+      console.log(`🚪 Joined private room: ${userId}`);
+    }
+
+    // If the connection drops (app goes to background, or server restarts),
+    // we MUST re-join the room the exact millisecond we reconnect!
+    const handleReconnect = () => {
+      socket.emit("joinUserRoom", userId);
+      console.log(`🔄 Socket reconnected! Re-joined private room: ${userId}`);
+    };
+
+    socket.on("connect", handleReconnect);
+
+    return () => {
+      socket.off("connect", handleReconnect);
+    };
+  }, [socket, userId]);
 
   useEffect(() => {
     console.log("Role updated:", role);
@@ -118,7 +135,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
       console.log("📡 Backend response:", responseData);
 
-      //  CRITICAL FIX: IGNORE MySQL DOUBLE WARNING = SUCCESS
       if (
         responseData.error &&
         responseData.error.includes("DOUBLE") &&
@@ -132,7 +148,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         };
       }
 
-      //  Normal success conditions
       if (
         responseData.success === true ||
         (responseData.affectedRows && responseData.affectedRows > 0) ||
@@ -145,7 +160,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         };
       }
 
-      //  Real errors (not MySQL warnings)
       const errorMsg =
         responseData.error || responseData.message || "Signup failed";
       throw new Error(errorMsg);
@@ -158,17 +172,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
-  // POST tailor pricing
   const saveTailorPricing = async (
     tailorId: string | undefined,
     selectedDressIds: number[],
-    allDressTypes: { dress_id: number; base_price: number }[],
+    allDressTypes: any[],
   ) => {
     const prices = selectedDressIds.map((id) => {
       const dress = allDressTypes.find((d) => d.dress_id === id);
       return {
         dress_id: id,
         price: dress?.base_price || 0,
+        dress_image: dress?.dress_image || null,
       };
     });
 
@@ -189,7 +203,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     return await res.json();
   };
 
-  // context/AuthContext.tsx - Add this function
   const checkPhoneExists = async (phone: string): Promise<boolean> => {
     try {
       console.log("🔍 Checking phone exists:", phone, " Role:", role);
@@ -206,7 +219,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       return result.exists;
     } catch (error) {
       console.error("❌ Phone check failed:", error);
-      return false; // Assume doesn't exist on error
+      return false;
     }
   };
 
@@ -252,7 +265,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     try {
       const now = Date.now();
 
-      // Rate limit OTP resend
       if (lastOtpSentAt && now - lastOtpSentAt < OTP_COOLDOWN_SECONDS * 1000) {
         const remaining = Math.ceil(
           (OTP_COOLDOWN_SECONDS * 1000 - (now - lastOtpSentAt)) / 1000,
@@ -264,7 +276,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
       const cleanPhone = phone.replace(/\D/g, "");
 
-      // Check if phone already exists
       const exists = await checkPhoneExists(cleanPhone);
       if (exists) {
         throw new Error("Phone number already registered.");
@@ -284,7 +295,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           body: `Your verification code: ${mockOtp}`,
           data: { otp: mockOtp },
         },
-
         trigger: null,
       });
 
@@ -312,7 +322,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
       console.log("📤 Sending signup data:", signupData);
 
-      //  This CANNOT fail with "result is not defined"
       const result = await signupUser(signupData);
 
       console.log(" FINAL SUCCESS:", result);
@@ -324,7 +333,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       const errorMsg = error.message || "Signup failed";
       setError(errorMsg);
       console.error("❌ completeSignup ERROR:", errorMsg);
-      throw error; // Re-throw for UI to handle
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -337,7 +346,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     try {
       const formData = new FormData();
 
-      formData.append("tailor_id", userId); // 🔥 VERY IMPORTANT
+      formData.append("tailor_id", userId);
       formData.append("tailor_name", fullName);
       formData.append("shop_name", shopName);
       formData.append("experience_years", "0");
@@ -348,6 +357,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       formData.append(area ? "area" : "area", area);
       formData.append(district ? "district" : "district", district);
       formData.append(pincode ? "pincode" : "pincode", pincode);
+      formData.append("map_link", mapLink);
 
       if (profilePhoto) {
         formData.append("profilePhoto", {
@@ -412,6 +422,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     setVerifiedOtp(true);
     return true;
   };
+
   const resetAuth = (): void => {
     setPhoneNumber("");
     setVerificationCode("");
@@ -479,34 +490,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const shopDetailsValue: ShopDetailsType = {
     selectedSpecs,
     setSelectedSpecs,
-
     dressVarieties,
     setDressVarieties,
-
     shopName,
     setShopName,
-
     houseNo,
     setHouseNo,
-
     street,
     setStreet,
-
     area,
     setArea,
-
     district,
     setDistrict,
-
     profilePhoto,
     setProfilePhoto,
-
     shopPhoto,
     setShopPhoto,
-
     pincode,
     setPincode,
     saveTailorPricing,
+    mapLink,
+    setMapLink,
   };
 
   return (
