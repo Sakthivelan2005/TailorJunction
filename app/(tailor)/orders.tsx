@@ -1,17 +1,19 @@
+// app/(tailor)/Orders.tsx
 import { useAuth } from "@/context/AuthContext";
-import { pushNotification } from "@/utils/notificationConfig";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
+// 1. Import the notification helper
+import FunnyScrollView from "@/components/FunnyScrollView";
+import { pushNotification } from "@/utils/notificationConfig";
 
 export default function TailorOrdersScreen() {
   const { userId, API_URL, socket } = useAuth();
@@ -19,46 +21,78 @@ export default function TailorOrdersScreen() {
   const [completed, setCompleted] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 🚀 Tracks which orders have unread messages
   const [unreadOrders, setUnreadOrders] = useState<number[]>([]);
+  const [, setTick] = useState(0);
 
   useEffect(() => {
     fetchOrders();
 
+    const timer = setInterval(() => {
+      setTick((t) => t + 1);
+      checkExpiredChats();
+    }, 60000);
+
     if (socket && userId) {
-      // 🚀 Listen for New Orders instantly
-      const handleNewOrder = (data: { tailorId: string }) => {
-        if (data.tailorId === userId) {
-          pushNotification(
-            "New Order Received",
-            "You have a new order. Check it out!",
-          );
-          fetchOrders(); // Refresh the list silently in the background
-        }
-      };
+      socket.on("newOrderPlaced", (data: { tailorId: string }) => {
+        if (data.tailorId === userId) fetchOrders();
+      });
 
-      // 🚀 Listen for New Chat Messages
-      const handleNewMessage = (msgData: {
-        order_id: number;
-        receiver_id: string;
-      }) => {
-        if (msgData.receiver_id === userId) {
-          // Add this order ID to the unread list (preventing duplicates)
-          setUnreadOrders((prev) =>
-            Array.from(new Set([...prev, msgData.order_id])),
-          );
-        }
-      };
+      // 2. Listen for order status changes (Specifically Cancellations)
+      socket.on(
+        "orderStatusUpdated",
+        (data: {
+          orderId: number;
+          status: string;
+          tailorId: string;
+          reason?: string;
+        }) => {
+          if (data.tailorId === userId) {
+            if (data.status === "cancelled") {
+              // A. Trigger the Local Push Notification
+              pushNotification(
+                "Order Cancelled!",
+                `Order #${data.orderId} was cancelled. Reason: ${data.reason || "Not provided"}`,
+              );
 
-      socket.on("newOrderPlaced", handleNewOrder);
-      socket.on("receiveMessage", handleNewMessage);
+              // B. Instantly remove it from the UI for a snappy experience
+              setPending((prev) =>
+                prev.filter((order) => order.order_id !== data.orderId),
+              );
+            }
+
+            // C. Re-sync with the database just to be safe
+            fetchOrders();
+          }
+        },
+      );
+
+      socket.on(
+        "receiveMessage",
+        (msgData: { order_id: number; receiver_id: string }) => {
+          if (msgData.receiver_id === userId) {
+            setUnreadOrders((prev) =>
+              Array.from(new Set([...prev, msgData.order_id])),
+            );
+          }
+        },
+      );
+
+      socket.on("chatClosed", () => fetchOrders());
+      socket.on("newReview", (data) => {
+        if (data.tailorId === userId) fetchOrders();
+      });
 
       return () => {
-        socket.off("newOrderPlaced", handleNewOrder);
-        socket.off("receiveMessage", handleNewMessage);
+        socket.off("newOrderPlaced");
+        socket.off("orderStatusUpdated"); // Clean up listener
+        socket.off("receiveMessage");
+        socket.off("chatClosed");
+        socket.off("newReview");
+        clearInterval(timer);
       };
     }
-  }, [socket, userId]);
+    return () => clearInterval(timer);
+  }, [socket, userId, completed]);
 
   const fetchOrders = async () => {
     if (!userId) return;
@@ -76,7 +110,44 @@ export default function TailorOrdersScreen() {
     }
   };
 
-  // 🚀 ACTION: Update Order Status
+  const canStillChat = (orderDatetime: string) => {
+    const completedTime = new Date(orderDatetime).getTime();
+    return (new Date().getTime() - completedTime) / (1000 * 60 * 60) < 24;
+  };
+
+  const checkExpiredChats = () => {
+    completed.forEach((order) => {
+      if (!canStillChat(order.completed_at || order.order_datetime)) {
+        socket?.emit("deleteExpiredChat", { orderId: order.order_id });
+      }
+    });
+  };
+
+  const getUrgencyTimer = (orderDatetime: string, urgency: string) => {
+    if (urgency === "normal")
+      return { text: "Normal Delivery", color: "#10b981", bg: "#dcfce7" };
+
+    const createdDate = new Date(orderDatetime).getTime();
+    let hoursToAdd = urgency === "1_day" ? 24 : urgency === "2_day" ? 48 : 72;
+    const diff =
+      createdDate + hoursToAdd * 60 * 60 * 1000 - new Date().getTime();
+
+    if (diff <= 0) return { text: "OVERDUE", color: "#fff", bg: "#ef4444" };
+
+    const h = Math.floor(diff / (1000 * 60 * 60));
+    const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    let text =
+      h > 24
+        ? `${Math.floor(h / 24)}d ${h % 24}h ${m}m left`
+        : `${h}h ${m}m left`;
+
+    return {
+      text,
+      color: diff < 24 * 60 * 60 * 1000 ? "#ef4444" : "#f59e0b",
+      bg: diff < 24 * 60 * 60 * 1000 ? "#fee2e2" : "#fef3c7",
+    };
+  };
+
   const updateStatus = async (orderId: number, newStatus: string) => {
     try {
       const res = await fetch(
@@ -88,47 +159,34 @@ export default function TailorOrdersScreen() {
         },
       );
       const data = await res.json();
-
-      if (data.success) {
-        fetchOrders(); // Refresh the list so it moves to the right section
-      } else {
-        Alert.alert("Error", "Failed to update order status.");
-      }
+      if (data.success) fetchOrders();
     } catch (err) {
       Alert.alert("Error", "Network error updating order.");
     }
   };
 
-  // 🚀 NAVIGATION: Open Chat
   const openChat = (orderId: number, customerId: string) => {
-    // Remove the "New" badge when opened
     setUnreadOrders((prev) => prev.filter((id) => id !== orderId));
-
     router.push({
       pathname: "/(tailor)/Chat",
       params: { orderId, receiverId: customerId },
     });
   };
 
-  // 🚀 NAVIGATION: Open Measurements
-  const openMeasurements = (orderId: number) => {
-    router.push({
-      pathname: "/(tailor)/Measurements",
-      params: { orderId },
-    });
-  };
-
-  if (loading) {
+  if (loading)
     return (
       <ActivityIndicator size="large" style={styles.loader} color="#3b82f6" />
     );
-  }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <FunnyScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      onRefreshData={fetchOrders}
+    >
       <Text style={styles.headerTitle}>Shop Orders</Text>
 
-      {/* PENDING & ACCEPTED ORDERS */}
+      {/* ACTIVE ORDERS */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Active Orders</Text>
         <View style={styles.badgeCount}>
@@ -136,138 +194,207 @@ export default function TailorOrdersScreen() {
         </View>
       </View>
 
-      {pending.length === 0 ? (
+      {pending.length === 0 && (
         <Text style={styles.emptyText}>No active orders right now.</Text>
-      ) : null}
+      )}
 
-      {pending.map((order) => (
-        <View key={order.order_id} style={styles.card}>
-          {/* Card Top: ID & Status */}
-          <View style={styles.cardHeader}>
-            <Text style={styles.orderId}>Order #{order.order_id}</Text>
-            <View
-              style={[
-                styles.statusPill,
-                {
-                  backgroundColor:
-                    order.status === "accepted" ? "#dcfce7" : "#fef3c7",
-                },
-              ]}
-            >
-              <Text
+      {pending.map((order) => {
+        const timer = getUrgencyTimer(order.order_datetime, order.urgency);
+
+        return (
+          <View key={order.order_id} style={styles.card}>
+            <View style={styles.cardHeader}>
+              <View>
+                <Text style={styles.orderId}>Order #{order.order_id}</Text>
+                <View
+                  style={[styles.timerBadge, { backgroundColor: timer.bg }]}
+                >
+                  <Text style={[styles.timerText, { color: timer.color }]}>
+                    ⏱ {timer.text}
+                  </Text>
+                </View>
+              </View>
+
+              <View
                 style={[
-                  styles.statusText,
+                  styles.statusPill,
                   {
-                    color: order.status === "accepted" ? "#166534" : "#92400e",
+                    backgroundColor:
+                      order.status === "accepted" ? "#dcfce7" : "#fef3c7",
                   },
                 ]}
               >
-                {order.status === "pending" ? "Pending" : "In Progress"}
-              </Text>
-            </View>
-          </View>
-
-          {/* Card Body: Cloth Details */}
-          <Text style={styles.clothText}>👗 {order.cloth_type}</Text>
-
-          {/* Card Bottom: Actions Toolbar */}
-          <View style={styles.actionToolbar}>
-            {/* Measurement Button */}
-            <TouchableOpacity
-              style={styles.toolBtn}
-              onPress={() => openMeasurements(order.order_id)}
-            >
-              <View style={styles.iconCircleBlue}>
-                <MaterialCommunityIcons
-                  name="tape-measure"
-                  size={18}
-                  color="#3b82f6"
-                />
+                <Text
+                  style={[
+                    styles.statusText,
+                    {
+                      color:
+                        order.status === "accepted" ? "#166534" : "#92400e",
+                    },
+                  ]}
+                >
+                  {order.status === "pending" ? "Pending" : "In Progress"}
+                </Text>
               </View>
-              <Text style={styles.toolBtnText}>Measure</Text>
-            </TouchableOpacity>
+            </View>
 
-            {/* Chat Button */}
-            <TouchableOpacity
-              style={styles.toolBtn}
-              onPress={() => openChat(order.order_id, order.customer_id)}
-            >
-              <View>
-                <View style={styles.iconCircleSky}>
+            <Text style={styles.clothText}>👗 {order.cloth_type}</Text>
+
+            <View style={styles.actionToolbar}>
+              <TouchableOpacity
+                style={styles.toolBtn}
+                onPress={() =>
+                  router.push({
+                    pathname: "/(tailor)/Measurements",
+                    params: { orderId: order.order_id },
+                  })
+                }
+              >
+                <View style={styles.iconCircleBlue}>
                   <MaterialCommunityIcons
-                    name="message-text-outline"
+                    name="tape-measure"
                     size={18}
-                    color="#0284c7"
+                    color="#3b82f6"
                   />
                 </View>
+                <Text style={styles.toolBtnText}>Measure</Text>
+              </TouchableOpacity>
 
-                {/* 🚀 The Red Notification Label */}
-                {unreadOrders.includes(order.order_id) && (
-                  <View style={styles.unreadBadge}>
-                    <Text style={styles.unreadText}>New</Text>
+              <TouchableOpacity
+                style={styles.toolBtn}
+                onPress={() => openChat(order.order_id, order.customer_id)}
+              >
+                <View>
+                  <View style={styles.iconCircleSky}>
+                    <MaterialCommunityIcons
+                      name="message-text-outline"
+                      size={18}
+                      color="#0284c7"
+                    />
                   </View>
+                  {unreadOrders.includes(order.order_id) && (
+                    <View style={styles.unreadBadge}>
+                      <Text style={styles.unreadCountText}>New</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.toolBtnText}>Chat</Text>
+              </TouchableOpacity>
+
+              <View style={{ flex: 1, alignItems: "flex-end" }}>
+                {order.status === "pending" ? (
+                  <TouchableOpacity
+                    style={styles.acceptBtn}
+                    onPress={() => updateStatus(order.order_id, "accepted")}
+                  >
+                    <Text style={styles.primaryBtnText}>Accept</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.completeBtn}
+                    onPress={() => updateStatus(order.order_id, "completed")}
+                  >
+                    <Text style={styles.primaryBtnText}>Complete</Text>
+                  </TouchableOpacity>
                 )}
               </View>
-              <Text style={styles.toolBtnText}>Chat</Text>
-            </TouchableOpacity>
-
-            {/* Status Update Button */}
-            <View style={{ flex: 1, alignItems: "flex-end" }}>
-              {order.status === "pending" ? (
-                <TouchableOpacity
-                  style={styles.acceptBtn}
-                  onPress={() => updateStatus(order.order_id, "accepted")}
-                >
-                  <Text style={styles.primaryBtnText}>Accept Order</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.completeBtn}
-                  onPress={() => updateStatus(order.order_id, "completed")}
-                >
-                  <Text style={styles.primaryBtnText}>Complete</Text>
-                </TouchableOpacity>
-              )}
             </View>
           </View>
-        </View>
-      ))}
+        );
+      })}
 
       {/* COMPLETED ORDERS */}
       <View style={[styles.sectionHeader, { marginTop: 30 }]}>
         <Text style={styles.sectionTitle}>Completed Orders</Text>
+        <View style={styles.badgeCount}>
+          <Text style={styles.badgeText}>{completed.length}</Text>
+        </View>
       </View>
 
-      {completed.length === 0 ? (
+      {completed.length === 0 && (
         <Text style={styles.emptyText}>No completed orders.</Text>
-      ) : null}
+      )}
 
-      {completed.map((order) => (
-        <View key={order.order_id} style={[styles.card, styles.completedCard]}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.orderId}>Order #{order.order_id}</Text>
-            <View style={styles.ratingRow}>
-              <Text style={styles.ratingText}>
-                {order.rating ? parseFloat(order.rating).toFixed(1) : "N/A"}
-              </Text>
-              {order.rating && (
-                <MaterialCommunityIcons name="star" size={16} color="#f59e0b" />
-              )}
+      {completed.map((order) => {
+        const timestampToCheck = order.completed_at || order.order_datetime;
+        const isChatOpen = canStillChat(timestampToCheck);
+
+        return (
+          <View
+            key={order.order_id}
+            style={[styles.card, styles.completedCard]}
+          >
+            <View style={styles.cardHeader}>
+              <Text style={styles.orderId}>Order #{order.order_id}</Text>
+              <View style={styles.ratingRow}>
+                <Text style={styles.ratingText}>
+                  {order.rating ? parseFloat(order.rating).toFixed(1) : "N/A"}
+                </Text>
+                {order.rating && (
+                  <MaterialCommunityIcons
+                    name="star"
+                    size={16}
+                    color="#f59e0b"
+                  />
+                )}
+              </View>
             </View>
+
+            <Text style={styles.clothText}>✅ {order.cloth_type}</Text>
+
+            {isChatOpen ? (
+              <View
+                style={[styles.actionToolbar, { marginTop: 5, paddingTop: 10 }]}
+              >
+                <TouchableOpacity
+                  style={styles.toolBtn}
+                  onPress={() => openChat(order.order_id, order.customer_id)}
+                >
+                  <View>
+                    <View style={styles.iconCircleSky}>
+                      <MaterialCommunityIcons
+                        name="message-text-outline"
+                        size={18}
+                        color="#0284c7"
+                      />
+                    </View>
+                    {unreadOrders.includes(order.order_id) && (
+                      <View style={styles.unreadBadge}>
+                        <Text style={styles.unreadCountText}>New</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.toolBtnText}>Chat (Closes soon)</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View
+                style={[
+                  styles.actionToolbar,
+                  {
+                    marginTop: 5,
+                    paddingTop: 10,
+                    borderTopColor: "transparent",
+                  },
+                ]}
+              >
+                <Text style={styles.chatClosedText}>
+                  Chat expired and securely deleted.
+                </Text>
+              </View>
+            )}
+
+            {order.feedback && (
+              <View style={styles.feedbackBox}>
+                <Text style={styles.feedbackText}>"{order.feedback}"</Text>
+              </View>
+            )}
           </View>
-
-          <Text style={styles.clothText}>✅ {order.cloth_type}</Text>
-
-          {order.feedback && (
-            <View style={styles.feedbackBox}>
-              <Text style={styles.feedbackText}>"{order.feedback}"</Text>
-            </View>
-          )}
-        </View>
-      ))}
+        );
+      })}
 
       <View style={{ height: 40 }} />
-    </ScrollView>
+    </FunnyScrollView>
   );
 }
 
@@ -285,7 +412,6 @@ const styles = StyleSheet.create({
     color: "#0f172a",
     marginBottom: 20,
   },
-
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -300,19 +426,13 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   badgeText: { fontSize: 12, fontWeight: "bold", color: "#475569" },
-
   emptyText: { color: "#94a3b8", fontStyle: "italic", marginBottom: 20 },
-
   card: {
     backgroundColor: "#fff",
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     elevation: 2,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
   },
   completedCard: {
     opacity: 0.85,
@@ -321,19 +441,28 @@ const styles = StyleSheet.create({
     borderColor: "#e2e8f0",
     elevation: 0,
   },
-
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     marginBottom: 12,
   },
-  orderId: { fontSize: 16, fontWeight: "bold", color: "#1e293b" },
+  orderId: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#1e293b",
+    marginBottom: 4,
+  },
+  timerBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    alignSelf: "flex-start",
+  },
+  timerText: { fontSize: 11, fontWeight: "bold" },
   statusPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   statusText: { fontSize: 12, fontWeight: "bold" },
-
   clothText: { fontSize: 15, color: "#475569", marginBottom: 16 },
-
   actionToolbar: {
     flexDirection: "row",
     alignItems: "center",
@@ -355,7 +484,6 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   toolBtnText: { fontSize: 13, fontWeight: "600", color: "#475569" },
-
   acceptBtn: {
     backgroundColor: "#3b82f6",
     paddingHorizontal: 16,
@@ -369,27 +497,10 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   primaryBtnText: { color: "#fff", fontSize: 13, fontWeight: "bold" },
-
-  ratingRow: { flexDirection: "row", alignItems: "center" },
-  ratingText: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#1e293b",
-    marginRight: 4,
-  },
-  feedbackBox: {
-    backgroundColor: "#f1f5f9",
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 10,
-  },
-  feedbackText: { fontSize: 13, color: "#475569", fontStyle: "italic" },
-
-  // Notification Badge Styles
   unreadBadge: {
     position: "absolute",
     top: -6,
-    right: 0,
+    right: -2,
     backgroundColor: "#ef4444",
     paddingHorizontal: 5,
     paddingVertical: 2,
@@ -398,9 +509,20 @@ const styles = StyleSheet.create({
     borderColor: "#fff",
     elevation: 3,
   },
-  unreadText: {
-    color: "#fff",
-    fontSize: 8,
+  unreadCountText: { color: "#fff", fontSize: 8, fontWeight: "bold" },
+  ratingRow: { flexDirection: "row", alignItems: "center" },
+  ratingText: {
+    fontSize: 14,
     fontWeight: "bold",
+    color: "#1e293b",
+    marginRight: 4,
   },
+  chatClosedText: { fontSize: 12, color: "#94a3b8", fontStyle: "italic" },
+  feedbackBox: {
+    backgroundColor: "#f1f5f9",
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  feedbackText: { fontSize: 13, color: "#475569", fontStyle: "italic" },
 });
