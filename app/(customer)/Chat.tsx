@@ -4,18 +4,17 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
-export default function CustomerChatScreen() {
-  // receiverId here will be the Tailor's ID
+export default function ChatScreen() {
   const { orderId, receiverId } = useLocalSearchParams();
   const { userId, API_URL, socket } = useAuth();
 
@@ -26,15 +25,14 @@ export default function CustomerChatScreen() {
   useEffect(() => {
     fetchChatHistory();
 
-    // 🚀 Listen for incoming messages for THIS specific order
     if (socket) {
       const handleReceiveMessage = (messageData: any) => {
-        if (messageData.order_id === Number(orderId)) {
-          setMessages((prev) => [...prev, messageData]);
-
-          // Trigger local notification if the message is from the Tailor
-          if (messageData.sender_id !== userId) {
-            pushNotification("Message from Tailor", messageData.message);
+        // 🚀 FIX 1: Safely compare as Strings so "123" === "123"
+        if (String(messageData.order_id) === String(orderId)) {
+          // 🚀 FIX 2: Only add incoming messages if they are NOT from me
+          if (String(messageData.sender_id) !== String(userId)) {
+            setMessages((prev) => [...prev, messageData]);
+            pushNotification("New Message from Tailor", messageData.message);
           }
         }
       };
@@ -44,7 +42,7 @@ export default function CustomerChatScreen() {
         socket.off("receiveMessage", handleReceiveMessage);
       };
     }
-  }, [socket, orderId]);
+  }, [socket, orderId, userId]);
 
   const fetchChatHistory = async () => {
     try {
@@ -61,10 +59,15 @@ export default function CustomerChatScreen() {
 
     const msgPayload = {
       order_id: Number(orderId),
-      sender_id: userId, // Customer ID
-      receiver_id: receiverId, // Tailor ID
+      sender_id: userId,
+      receiver_id: receiverId,
       message: newMessage.trim(),
     };
+
+    // 🚀 FIX 3: Optimistic UI - Instantly show the message on our own screen!
+    setMessages((prev) => [...prev, msgPayload]);
+    console.log("Hello world");
+    setNewMessage(""); // Clear input instantly for a fast feel
 
     try {
       // 1. Save to database
@@ -74,12 +77,10 @@ export default function CustomerChatScreen() {
         body: JSON.stringify(msgPayload),
       });
 
-      // 2. Emit to socket for instant delivery to Tailor
+      // 2. Emit to socket for instant delivery to the other person
       if (socket) {
         socket.emit("sendMessage", msgPayload);
       }
-
-      setNewMessage(""); // Clear input
     } catch (error) {
       console.error("Failed to send message:", error);
     }
@@ -95,7 +96,7 @@ export default function CustomerChatScreen() {
           <MaterialCommunityIcons name="arrow-left" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{`Order #${orderId} Chat`}</Text>
-        <View style={{ width: 24 }} /> {/* Spacer */}
+        <View style={{ width: 24 }} />
       </View>
 
       <ScrollView
@@ -110,7 +111,9 @@ export default function CustomerChatScreen() {
         </Text>
 
         {messages.map((msg, index) => {
-          const isMe = msg.sender_id === userId;
+          // 🚀 FIX 4: Convert both to strings before comparing so left/right aligns correctly
+          const isMe = String(msg.sender_id) === String(userId);
+
           return (
             <View
               key={index}
@@ -142,8 +145,8 @@ export default function CustomerChatScreen() {
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
-          placeholder="Type a message to your tailor..."
-          placeholderTextColor={"#000"}
+          placeholder="Type a message..."
+          placeholderTextColor="#000"
           value={newMessage}
           onChangeText={setNewMessage}
         />
@@ -196,6 +199,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 10,
     marginRight: 10,
+    color: "#000",
   },
   sendBtn: {
     backgroundColor: "#3b82f6",

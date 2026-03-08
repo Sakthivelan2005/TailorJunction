@@ -93,11 +93,24 @@ export default function CustomerLayout() {
           }}
         />
 
+        <Tabs.Screen
+          name="MyTailors"
+          options={{
+            tabBarIcon: ({ color, focused }) => (
+              <MaterialCommunityIcons
+                name="tape-measure"
+                size={26}
+                color={color}
+              />
+            ),
+          }}
+        />
+
         {/* Hidden screens */}
         <Tabs.Screen name="dress" options={{ href: null }} />
         <Tabs.Screen name="Chat" options={{ href: null }} />
-        <Tabs.Screen name="profile" options={{ href: null }} />
         <Tabs.Screen name="measurements" options={{ href: null }} />
+        <Tabs.Screen name="TailorDetails" options={{ href: null }} />
         <Tabs.Screen name="payment" options={{ href: null }} />
         <Tabs.Screen name="review" options={{ href: null }} />
       </Tabs>
@@ -108,12 +121,13 @@ export default function CustomerLayout() {
 const styles = StyleSheet.create({
   tabBar: {
     position: "relative",
-    bottom: 16,
+    bottom: 0,
     left: 16,
     right: 16,
     height: 60,
     backgroundColor: "white",
-    borderRadius: 30,
+    borderBottomRightRadius: 30,
+    borderBottomLeftRadius: 30,
     borderWidth: 1,
     borderColor: "#E5E5EA",
     shadowColor: "#000",
@@ -129,7 +143,7 @@ const styles = StyleSheet.create({
   },
   tabBarItem: {
     marginHorizontal: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 4,
+    paddingVertical: 5,
   },
 });
