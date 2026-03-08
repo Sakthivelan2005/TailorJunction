@@ -44,3 +44,85 @@ npm install socket.io-client
 
 //package which allows Node to listen to MySQL native events:
 npm install @rodrigogs/mysql-events
+
+//Added Images column in tailor_pricing table
+ALTER TABLE tailor_pricing 
+ADD COLUMN dress_image VARCHAR(255) DEFAULT NULL;
+
+//Added map_link column for fetching exact location of Tailor Shop
+ALTER TABLE tailor_shop_profile 
+ADD COLUMN map_link VARCHAR(500) DEFAULT NULL;
+
+//Installed for expo Map UI
+npx expo install react-native-maps expo-location
+
+npx expo install @react-native-community/netinfo
+
+//Modified triggers
+-- Drop the existing triggers first
+DROP TRIGGER IF EXISTS trg_tailor_pricing_before_insert;
+DROP TRIGGER IF EXISTS trg_tailor_pricing_before_update;
+
+DELIMITER $$
+
+CREATE TRIGGER trg_tailor_pricing_before_insert
+BEFORE INSERT ON tailor_pricing
+FOR EACH ROW
+BEGIN
+  DECLARE base DECIMAL(10,2);
+
+  SELECT base_price INTO base FROM dress_types WHERE dress_id = NEW.dress_id;
+  IF base IS NULL THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid dress_id.';
+  END IF;
+
+  IF NEW.price < base THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'You entered amount below the base price.';
+  END IF;
+
+  -- Leave last_updated as NULL to grant a free pass for the first edit.
+  SET NEW.last_updated = NULL;
+END $$
+
+CREATE TRIGGER trg_tailor_pricing_before_update
+BEFORE UPDATE ON tailor_pricing
+FOR EACH ROW
+BEGIN
+  DECLARE hours_diff INT;
+  DECLARE base DECIMAL(10,2);
+
+  -- Only apply pricing rules and timers IF the price actually changed.
+  IF NEW.price != OLD.price THEN
+  
+      SELECT base_price INTO base FROM dress_types WHERE dress_id = NEW.dress_id;
+      IF base IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid dress_id.';
+      END IF;
+
+      IF NEW.price < base THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'You entered amount below the base price.';
+      END IF;
+
+      -- Check the 24-hour lock ONLY IF last_updated is not null
+      IF OLD.last_updated IS NOT NULL THEN
+        SET hours_diff = TIMESTAMPDIFF(HOUR, OLD.last_updated, NOW());
+        IF hours_diff < 24 THEN
+          SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Price cannot be updated within 24 hours of last update.';
+        END IF;
+      END IF;
+
+      -- Set the lock timer for their NEXT edit
+      SET NEW.last_updated = NOW();
+      
+  END IF;
+END $$
+
+DELIMITER ;
+
+//added column
+ALTER TABLE orders ADD COLUMN completed_at DATETIME NULL;
+
+
+//using light weight map from web
+npm uninstall react-native-maps
+npx expo install react-native-webview
