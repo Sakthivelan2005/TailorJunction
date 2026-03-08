@@ -1,4 +1,5 @@
-//app/(tailor)/Home.tsx
+// app/(tailor)/Home.tsx
+import FunnyScrollView from "@/components/FunnyScrollView";
 import { useAuth } from "@/context/AuthContext";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -36,15 +37,39 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [isAvailable, setIsAvailable] = useState(false);
 
-  const { userId, resetAuth, API_URL } = useAuth();
-  console.log(
-    "Checking dashborad URL",
-    `${API_URL}/api/tailor/${userId}/dashboard`,
-  ); // Debug log for userId
+  const { userId, resetAuth, API_URL, socket } = useAuth(); // 🚀 Pulled socket from AuthContext
 
   useEffect(() => {
     fetchDashboardData();
-  }, [userId]);
+
+    // 🚀 SOCKET LISTENERS FOR REAL-TIME STATS
+    if (socket && userId) {
+      // 1. When a new order arrives (Updates Pending Orders)
+      socket.on("newOrderPlaced", (payload: { tailorId: string }) => {
+        if (payload.tailorId === userId) fetchDashboardData();
+      });
+
+      // 2. When order status changes e.g., to 'completed' (Updates Revenue & Completed Orders)
+      socket.on(
+        "orderStatusUpdated",
+        (payload: { orderId: number; status: string; tailorId: string }) => {
+          if (payload.tailorId === userId) fetchDashboardData();
+        },
+      );
+
+      // 3. When a customer leaves a new review (Updates Rating)
+      socket.on("newReview", (payload: { tailorId: string }) => {
+        if (payload.tailorId === userId) fetchDashboardData();
+      });
+
+      // Cleanup listeners on unmount
+      return () => {
+        socket.off("newOrderPlaced");
+        socket.off("orderStatusUpdated");
+        socket.off("newReview");
+      };
+    }
+  }, [userId, socket]);
 
   const fetchDashboardData = async () => {
     if (!userId) return;
@@ -83,18 +108,26 @@ export default function HomeScreen() {
     router.push("/(auth)/tailor/login");
   };
 
-  if (loading) return <ActivityIndicator size="large" style={styles.loader} />;
+  // Helper to ensure the profile photo URL is clean
+  const getImageUrl = (path: string | undefined) => {
+    if (!path) return "https://via.placeholder.com/150";
+    return `${API_URL}/${path.replace(/^src\//, "").replace(/^\//, "")}`;
+  };
+
+  if (loading)
+    return (
+      <ActivityIndicator size="large" style={styles.loader} color="#3b82f6" />
+    );
   if (!data) return <Text style={styles.errorText}>No data found</Text>;
 
   return (
     <ScrollView style={styles.container}>
+      <FunnyScrollView onRefreshData={fetchDashboardData} />
       {/* Header Profile */}
       <View style={styles.header}>
         <View style={styles.profileInfo}>
           <Image
-            source={{
-              uri: `${API_URL}${data.profile.profile_photo}`,
-            }}
+            source={{ uri: getImageUrl(data.profile.profile_photo) }}
             style={styles.avatar}
           />
           <View>
