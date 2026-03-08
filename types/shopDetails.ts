@@ -31,6 +31,9 @@ export interface ShopDetailsType {
   pincode: string;
   setPincode: (value: string) => void;
 
+  mapLink: string;
+  setMapLink: (value: string) => void;
+
   saveTailorPricing: (
     tailorId: string | undefined,
     selectedDressIds: number[],
