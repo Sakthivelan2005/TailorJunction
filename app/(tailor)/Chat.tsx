@@ -4,19 +4,19 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
-export default function ChatScreen() {
+export default function TailorChatScreen() {
   const { orderId, receiverId } = useLocalSearchParams();
-  const { userId, API_URL, socket, fullName } = useAuth();
+  const { userId, API_URL, socket } = useAuth();
 
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -25,15 +25,15 @@ export default function ChatScreen() {
   useEffect(() => {
     fetchChatHistory();
 
-    // 🚀 Listen for incoming messages for THIS specific order
     if (socket) {
       const handleReceiveMessage = (messageData: any) => {
-        if (messageData.order_id === Number(orderId)) {
-          setMessages((prev) => [...prev, messageData]);
-
-          // Trigger local notification if the message is NOT from me
-          if (messageData.sender_id !== userId) {
-            pushNotification("New Message", messageData.message);
+        // 🚀 FIX 1: Safely compare as Strings so "32" === "32"
+        if (String(messageData.order_id) === String(orderId)) {
+          // 🚀 FIX 2: Only add incoming messages if they are NOT from me
+          if (String(messageData.sender_id) !== String(userId)) {
+            setMessages((prev) => [...prev, messageData]);
+            console.log("Message received by Tailor: ", messageData);
+            pushNotification("Message from Customer", messageData.message);
           }
         }
       };
@@ -43,13 +43,15 @@ export default function ChatScreen() {
         socket.off("receiveMessage", handleReceiveMessage);
       };
     }
-  }, [socket, orderId]);
+  }, [socket, orderId, userId]); // 🚀 Added userId to dependencies!
 
   const fetchChatHistory = async () => {
     try {
       const res = await fetch(`${API_URL}/api/chat/${orderId}`);
       const data = await res.json();
-      if (data.success) setMessages(data.messages);
+      if (data.success) {
+        setMessages(data.messages);
+      }
     } catch (error) {
       console.error("Failed to fetch chat:", error);
     }
@@ -60,25 +62,28 @@ export default function ChatScreen() {
 
     const msgPayload = {
       order_id: Number(orderId),
-      sender_id: userId,
-      receiver_id: receiverId,
+      sender_id: userId, // Tailor ID
+      receiver_id: receiverId, // Customer ID
       message: newMessage.trim(),
     };
 
-    try {
-      // 1. Save to database
-      await fetch(`${API_URL}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(msgPayload),
-      });
+    // 🚀 FIX 3: Optimistic UI - Instantly show the message on our own screen!
+    setMessages((prev) => [...prev, msgPayload]);
+    setNewMessage(""); // Clear input instantly
 
-      // 2. Emit to socket for instant delivery
+    try {
+      // 1. Emit to socket for instant delivery to Customer
       if (socket) {
+        console.log("Sent from Tailor: ", msgPayload);
         socket.emit("sendMessage", msgPayload);
       }
 
-      setNewMessage(""); // Clear input
+      // 2. Save to database quietly in the background (No 'await'!)
+      fetch(`${API_URL}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(msgPayload),
+      }).catch((err) => console.error("DB Save Error:", err));
     } catch (error) {
       console.error("Failed to send message:", error);
     }
@@ -94,7 +99,7 @@ export default function ChatScreen() {
           <MaterialCommunityIcons name="arrow-left" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{`Order #${orderId} Chat`}</Text>
-        <View style={{ width: 24 }} /> {/* Spacer */}
+        <View style={{ width: 24 }} />
       </View>
 
       <ScrollView
@@ -109,7 +114,9 @@ export default function ChatScreen() {
         </Text>
 
         {messages.map((msg, index) => {
-          const isMe = msg.sender_id === userId;
+          // 🚀 FIX 4: Convert both to strings before comparing so left/right aligns correctly
+          const isMe = String(msg.sender_id) === String(userId);
+
           return (
             <View
               key={index}
@@ -141,8 +148,8 @@ export default function ChatScreen() {
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
-          placeholder="Type a message..."
-          placeholderTextColor={"#000"}
+          placeholder="Type a message to the customer..."
+          placeholderTextColor="#000"
           value={newMessage}
           onChangeText={setNewMessage}
         />
@@ -195,6 +202,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 10,
     marginRight: 10,
+    color: "#000",
   },
   sendBtn: {
     backgroundColor: "#3b82f6",

@@ -6,12 +6,11 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
-  ScrollView,
   StyleSheet,
   Switch,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 
 interface DashboardData {
@@ -121,8 +120,10 @@ export default function HomeScreen() {
   if (!data) return <Text style={styles.errorText}>No data found</Text>;
 
   return (
-    <ScrollView style={styles.container}>
-      <FunnyScrollView onRefreshData={fetchDashboardData} />
+    <FunnyScrollView
+      onRefreshData={fetchDashboardData}
+      style={styles.container}
+    >
       {/* Header Profile */}
       <View style={styles.header}>
         <View style={styles.profileInfo}>
@@ -180,7 +181,7 @@ export default function HomeScreen() {
       <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
         <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
-    </ScrollView>
+    </FunnyScrollView>
   );
 }
 
