@@ -24,5 +24,35 @@ const storage = multer.diskStorage({
     cb(null, name);
   },
 });
+const dressStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const category = (req.body.category || "misc").toLowerCase();
+    const dir = path.join(process.cwd(), "src", "uploads", "images", category);
+
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    // 1. Get name and remove any accidental spaces at the start/end
+    const rawName = (req.body.dress_name || "Custom_Dress").trim();
+
+    // 2. Replace all spaces inside the name with underscores
+    // "Green Chudi" becomes "Green_Chudi"
+    const formattedName = rawName.replace(/\s+/g, "_");
+
+    const ext = path.extname(file.originalname) || ".png";
+
+    // 3. Final Output: "Green_Chudi.png"
+    cb(null, `${formattedName}${ext}`);
+  },
+});
+
+export const uploadDressImage = multer({
+  storage: dressStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
 
 export const upload = multer({ storage });
