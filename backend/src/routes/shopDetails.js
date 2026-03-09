@@ -24,6 +24,7 @@ router.post(
         experience_years,
         specialization,
         availability_status,
+        map_link,
       } = req.body;
 
       const profilePhotoPath = req.files?.profilePhoto
@@ -42,7 +43,8 @@ router.post(
           shop_photo = COALESCE(?, shop_photo),
           house_no = ?, street = ?, area = ?, district = ?, pincode = ?,
           experience_years = ?, specialization = ?,
-          availability_status = ?
+          availability_status = ?,
+          map_link = ?
         WHERE tailor_id = ?
       `;
 
@@ -59,6 +61,7 @@ router.post(
         experience_years,
         specialization,
         availability_status,
+        map_link,
         tailor_id,
       ]);
 

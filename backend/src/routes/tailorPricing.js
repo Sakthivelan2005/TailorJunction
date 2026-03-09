@@ -7,8 +7,8 @@ const router = express.Router();
  * POST /api/tailor-pricing
  * Body:
  * {
- *   tailor_id: "T00001",
- *   prices: [{ dress_id: 1, price: 450 }]
+ * tailor_id: "T00001",
+ * prices: [{ dress_id: 1, price: 450, dress_image: "/images/men/shirt.png" }]
  * }
  */
 router.post("/tailor-pricing", async (req, res) => {
@@ -26,16 +26,24 @@ router.post("/tailor-pricing", async (req, res) => {
   try {
     await conn.beginTransaction();
 
+    // 🚀 Added dress_image to the INSERT and ON DUPLICATE KEY UPDATE clauses
     const sql = `
-      INSERT INTO tailor_pricing (tailor_id, dress_id, price)
-      VALUES (?, ?, ?)
+      INSERT INTO tailor_pricing (tailor_id, dress_id, price, dress_image)
+      VALUES (?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
         price = VALUES(price),
+        dress_image = VALUES(dress_image),
         last_updated = NOW()
     `;
 
     for (const item of prices) {
-      await conn.execute(sql, [tailor_id, item.dress_id, item.price]);
+      // 🚀 Passing item.dress_image (or null if it doesn't exist)
+      await conn.execute(sql, [
+        tailor_id,
+        item.dress_id,
+        item.price,
+        item.dress_image || null,
+      ]);
     }
 
     await conn.commit();
