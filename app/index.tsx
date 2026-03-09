@@ -26,8 +26,7 @@ interface NavigationButtonProps {
 
 export default function WelcomeScreen() {
   //Using setUserRole to set separate theme for customers and Tailors
-  const { setUserRole } = useTheme();
-  const { setRole } = useAuth();
+
   const NavigationButton: React.FC<NavigationButtonProps> = ({
     title,
     href,
@@ -39,6 +38,9 @@ export default function WelcomeScreen() {
 
     const gradientColors =
       colorScheme === "tailor" ? tailorColors : customerColors;
+
+    const { setUserRole } = useTheme();
+    const { setRole } = useAuth();
 
     return (
       <Link

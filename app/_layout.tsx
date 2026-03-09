@@ -1,5 +1,6 @@
 // app/_layout.tsx
 
+import NetworkMonitor from "@/components/NetworkMonitor";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { ThemeProvider as CustomThemeProvider } from "@/context/ThemeContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -46,6 +47,7 @@ function AppStack() {
           <Stack.Screen name="(customer)" />
           <Stack.Screen name="(tailor)" />
         </Stack>
+        <NetworkMonitor />
 
         <StatusBar style="auto" />
       </ThemeProvider>
