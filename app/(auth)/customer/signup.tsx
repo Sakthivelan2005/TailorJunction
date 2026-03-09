@@ -443,7 +443,7 @@ export default function CustomerSignup() {
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
                 >
-                  <ThemedText style={{ fontSize: 16 }}>
+                  <ThemedText style={{ fontSize: 16, color: colors.primary }}>
                     {showPassword ? "Show" : "Hide"}
                   </ThemedText>
                 </TouchableOpacity>

@@ -223,11 +223,11 @@ const LoginScreen = () => {
                   clearLocalError("password");
                 }}
                 secureTextEntry={!showPassword}
-                style={{ flex: 1, paddingVertical: 10, color: colors.text }}
+                style={{ flex: 1, paddingVertical: 10, color: labelColor }}
                 placeholderTextColor={colors.primary}
               />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                <ThemedText style={{ fontSize: 16 }}>
+                <ThemedText style={{ fontSize: 16, color: colors.text }}>
                   {showPassword ? "Show" : "Hide"}
                 </ThemedText>
               </TouchableOpacity>

@@ -8,7 +8,7 @@ import React, { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import PersonalDetails from "./PersonalDetails";
-import { ShopSpecialization } from "./ShopSpecialization";
+import ShopSpecialization from "./ShopSpecialization";
 
 export default function TailorSignup() {
   const [currentScreen, setCurrentScreen] = useState<"personal" | "shop">(

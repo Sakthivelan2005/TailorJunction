@@ -48,6 +48,20 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
 
   const { showToast } = useToast();
 
+  const today = new Date();
+  // Calculate max and min dates for DOB (between 18 and 90 years old)
+  const maxDate = new Date(
+    today.getFullYear() - 18,
+    today.getMonth(),
+    today.getDate(),
+  );
+
+  const minDate = new Date(
+    today.getFullYear() - 90,
+    today.getMonth(),
+    today.getDate(),
+  );
+
   const [errors, setErrors] = useState<{
     name?: string;
     email?: string;
@@ -451,10 +465,11 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
             </TouchableOpacity>
             {showDobPicker && (
               <DateTimePicker
-                value={dob || new Date()}
+                value={dob || maxDate}
                 mode="date"
                 display="default"
-                maximumDate={new Date()} // Prevent picking future dates
+                maximumDate={maxDate} // Age must be at least 18
+                minimumDate={minDate} // Age cannot exceed 90
                 onChange={handleDateChange}
               />
             )}
@@ -492,7 +507,7 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
                 placeholderTextColor={colors.primary}
               />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                <ThemedText style={{ fontSize: 16 }}>
+                <ThemedText style={{ fontSize: 16, color: colors.primary }}>
                   {showPassword ? "Show" : "Hide"}
                 </ThemedText>
               </TouchableOpacity>
