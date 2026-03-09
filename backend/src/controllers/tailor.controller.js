@@ -1,5 +1,7 @@
 import db from "../db.js";
-// --- HOME / DASHBOARD SCREEN ---
+
+// 1. DASHBOARD & PROFILE DATA
+
 export const getDashboardData = async (req, res) => {
   const { tailorId } = req.params;
 
@@ -66,7 +68,40 @@ export const getDashboardData = async (req, res) => {
   }
 };
 
-// --- ORDERS SCREEN ---
+export const getProfile = async (req, res) => {
+  const { tailorId } = req.params;
+
+  try {
+    const [profileDetails] = await db.query(
+      `SELECT t.tailor_name, t.shop_name, u.phone, u.email, 
+              t.house_no, t.street, t.area, t.district, t.map_link, t.state, t.pincode, t.profile_photo
+       FROM tailor_shop_profile t
+       JOIN users u ON t.tailor_id = u.user_id
+       WHERE t.tailor_id = ?`,
+      [tailorId],
+    );
+
+    // 🚀 Added tp.updated_at so the frontend can calculate the 24hr timer
+    const [pricing] = await db.query(
+      `SELECT tp.dress_id, d.dress_name as cloth_type, d.base_price, tp.price, tp.dress_image, tp.last_updated as updated_at 
+       FROM tailor_pricing tp
+       JOIN dress_types d ON tp.dress_id = d.dress_id
+       WHERE tp.tailor_id = ?`,
+      [tailorId],
+    );
+
+    if (profileDetails.length === 0)
+      return res.status(404).json({ message: "Tailor not found" });
+
+    res.json({ details: profileDetails[0], pricing });
+  } catch (error) {
+    console.error("Profile Fetch Error:", error);
+    res.status(500).json({ error: "Server error fetching profile" });
+  }
+};
+
+// 2. ORDER MANAGEMENT
+
 export const getOrders = async (req, res) => {
   const { tailorId } = req.params;
 
@@ -74,7 +109,8 @@ export const getOrders = async (req, res) => {
     // Fetch Pending Orders
     const [pendingOrders] = await db.query(
       `
-      SELECT o.order_id, d.dress_name as cloth_type, o.order_status as status 
+      SELECT o.order_id, d.dress_name as cloth_type, o.order_status as status, 
+       o.customer_id, o.urgency, o.order_datetime
       FROM orders o
       JOIN dress_types d ON o.dress_id = d.dress_id
       WHERE o.tailor_id = ? AND o.order_status IN ('pending', 'accepted')
@@ -86,7 +122,7 @@ export const getOrders = async (req, res) => {
     // Fetch Completed Orders with Feedback
     const [completedOrders] = await db.query(
       `
-      SELECT o.order_id, d.dress_name as cloth_type, r.review_text as feedback, r.rating 
+      SELECT o.order_id, d.dress_name as cloth_type, r.review_text as feedback, r.rating, o.order_datetime as completed_at 
       FROM orders o
       JOIN dress_types d ON o.dress_id = d.dress_id
       LEFT JOIN reviews r ON o.order_id = r.order_id
@@ -103,48 +139,37 @@ export const getOrders = async (req, res) => {
   }
 };
 
-// --- PROFILE SCREEN ---
-export const getProfile = async (req, res) => {
-  const { tailorId } = req.params;
+export const updateOrderStatus = async (req, res) => {
+  const { orderId } = req.params;
+  const { status } = req.body; // 'accepted', 'completed', etc.
 
   try {
-    // Fetch Profile & Address Details
-    const [profileDetails] = await db.query(
-      `
-      SELECT t.tailor_name, t.shop_name, u.phone, u.email, 
-             t.house_no, t.street, t.area, t.district, t.state, t.pincode, t.profile_photo
-      FROM tailor_shop_profile t
-      JOIN users u ON t.tailor_id = u.user_id
-      WHERE t.tailor_id = ?
-    `,
-      [tailorId],
-    );
+    if (status == "completed") {
+      await db.query(
+        `UPDATE orders SET order_status = 'completed', completed_at = NOW() WHERE order_id = ?;`,
+        [orderId],
+      );
+    } else {
+      //update when accepted
+      await db.query(`UPDATE orders SET order_status = ? WHERE order_id = ?`, [
+        status,
+        orderId,
+      ]);
+    }
+    // Instantly tell the customer their order progress bar should move!
+    req.io.emit("orderStatusUpdated", { orderId: Number(orderId), status });
 
-    // Fetch Pricing Table
-    const [pricing] = await db.query(
-      `
-      SELECT d.dress_name as cloth_type, tp.price 
-      FROM tailor_pricing tp
-      JOIN dress_types d ON tp.dress_id = d.dress_id
-      WHERE tp.tailor_id = ?
-    `,
-      [tailorId],
-    );
-
-    if (profileDetails.length === 0)
-      return res.status(404).json({ message: "Tailor not found" });
-
-    res.json({
-      details: profileDetails[0],
-      pricing,
-    });
+    res.json({ success: true, message: `Order marked as ${status}` });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Server error fetching profile" });
+    console.error("Error updating order:", error);
+    res
+      .status(500)
+      .json({ success: false, error: "Failed to update order status" });
   }
 };
 
-// --- SETTINGS SCREEN ---
+// 3. SETTINGS & AVAILABILITY
+
 export const getSettings = async (req, res) => {
   const { tailorId } = req.params;
 
@@ -165,7 +190,6 @@ export const getSettings = async (req, res) => {
   }
 };
 
-// --- UPDATE AUTO-CLOSE PREFERENCE ---
 export const updateAutoCloseSetting = async (req, res) => {
   const { tailorId } = req.params;
   const { autoCloseEnabled } = req.body;
@@ -204,25 +228,134 @@ export const updateAvailability = async (req, res) => {
   }
 };
 
-// --- UPDATE ORDER STATUS (Tailor Accepting/Completing) ---
-export const updateOrderStatus = async (req, res) => {
-  const { orderId } = req.params;
-  const { status } = req.body; // 'accepted', 'completed', etc.
+// 4. CATALOG & PRICING
+export const updateTailorPricing = async (req, res) => {
+  const { tailorId } = req.params;
+  const { pricingUpdates } = req.body;
 
   try {
-    await db.query(`UPDATE orders SET order_status = ? WHERE order_id = ?`, [
-      status,
-      orderId,
-    ]);
+    for (const item of pricingUpdates) {
+      await db.query(
+        `UPDATE tailor_pricing tp
+         JOIN dress_types dt ON tp.dress_id = dt.dress_id
+         SET tp.price = GREATEST(?, dt.base_price)
+         WHERE tp.tailor_id = ? AND tp.dress_id = ?`,
+        [item.new_price, tailorId, item.dress_id],
+      );
+    }
 
-    // 🚀 Instantly tell the customer their order progress bar should move!
-    req.io.emit("orderStatusUpdated", { orderId: Number(orderId), status });
-
-    res.json({ success: true, message: `Order marked as ${status}` });
+    req.io.emit("catalogUpdated", { tailorId });
+    res.json({ success: true, message: "Pricing updated securely." });
   } catch (error) {
-    console.error("Error updating order:", error);
+    // 🚀 Catch the custom MySQL Trigger Error!
+    if (error.code === "ER_SIGNAL_EXCEPTION" || error.sqlState === "45000") {
+      return res.status(400).json({
+        success: false,
+        message:
+          error.sqlMessage ||
+          "Price cannot be updated within 24 hours of last update.",
+      });
+    }
+
+    console.error("Pricing Update Error:", error);
     res
       .status(500)
-      .json({ success: false, error: "Failed to update order status" });
+      .json({ success: false, error: "Failed to update pricing." });
+  }
+};
+
+export const addNewCustomDress = async (req, res) => {
+  const { tailorId } = req.params;
+  const { dress_name, category, price } = req.body;
+  const requestedPrice = Number(price);
+
+  // 🚀 The URL will now be perfectly clean: /images/women/Green_Chudi.png
+  const catLower = category ? category.toLowerCase() : "misc";
+  const dress_image = req.file
+    ? `/images/${catLower}/${req.file.filename}`
+    : null;
+
+  try {
+    // 1. Check if dress exists globally
+    const [existingDress] = await db.query(
+      `SELECT dress_id, base_price FROM dress_types WHERE LOWER(dress_name) = LOWER(?)`,
+      [dress_name],
+    );
+
+    let finalDressId;
+
+    if (existingDress.length > 0) {
+      // SCENARIO A: Dress exists.
+      finalDressId = existingDress[0].dress_id;
+
+      if (requestedPrice < existingDress[0].base_price) {
+        return res.status(400).json({
+          success: false,
+          message: `Price cannot be less than base price of ₹${existingDress[0].base_price}`,
+        });
+      }
+    } else {
+      // 🚀 SCENARIO B: Brand new dress!
+      // Insert into dress_types WITH the newly generated dress_image URL
+      const [newDress] = await db.query(
+        `INSERT INTO dress_types (dress_name, category, base_price, dress_image) VALUES (?, ?, ?, ?)`,
+        [dress_name, category, requestedPrice, dress_image],
+      );
+      finalDressId = newDress.insertId;
+    }
+
+    // 2. Also insert/update into tailor_pricing
+    await db.query(
+      `INSERT INTO tailor_pricing (tailor_id, dress_id, price, dress_image) 
+       VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE price = VALUES(price), dress_image = VALUES(dress_image)`,
+      [tailorId, finalDressId, requestedPrice, dress_image],
+    );
+
+    req.io.emit("catalogUpdated", { tailorId });
+    res.json({ success: true, message: "Dress added successfully!" });
+  } catch (error) {
+    console.error("Add custom dress error:", error);
+    res.status(500).json({ success: false, error: "Failed to add dress." });
+  }
+};
+
+// --- GET TAILOR'S CUSTOMER LEDGER ---
+export const getTailorCustomers = async (req, res) => {
+  const { tailorId } = req.params;
+
+  try {
+    const [customers] = await db.query(
+      `SELECT 
+          c.customer_id, 
+          c.customer_name, 
+          c.area, 
+          u.phone,
+          COUNT(o.order_id) as total_orders, 
+          SUM(o.price) as total_spent, 
+          MAX(o.order_datetime) as last_order_date,
+          GROUP_CONCAT(d.dress_name SEPARATOR ', ') as stitched_dresses
+       FROM orders o
+       JOIN customer_profile c ON o.customer_id = c.customer_id
+       JOIN users u ON c.customer_id = u.user_id
+       JOIN dress_types d ON o.dress_id = d.dress_id
+       WHERE o.tailor_id = ? AND o.order_status = 'completed'
+       GROUP BY c.customer_id, c.customer_name, c.area, u.phone
+       ORDER BY total_spent DESC`,
+      [tailorId],
+    );
+
+    // Calculate the Grand Total earned from all customers
+    const grandTotal = customers.reduce(
+      (sum, cust) => sum + Number(cust.total_spent || 0),
+      0,
+    );
+
+    res.json({ success: true, customers, grandTotal });
+  } catch (error) {
+    console.error("Fetch tailor customers error:", error);
+    res
+      .status(500)
+      .json({ success: false, error: "Server error fetching customers" });
   }
 };
