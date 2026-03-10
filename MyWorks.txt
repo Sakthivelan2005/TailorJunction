@@ -126,3 +126,7 @@ ALTER TABLE orders ADD COLUMN completed_at DATETIME NULL;
 //using light weight map from web
 npm uninstall react-native-maps
 npx expo install react-native-webview
+
+Up coming changes:
+1. set search box for selecting dress
+2. set separate tab for dress
