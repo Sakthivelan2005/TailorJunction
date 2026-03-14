@@ -3,6 +3,55 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import pool from "../db.js";
 
+export const getUserFullName = async (req, res) => {
+  const { id } = req.params;
+
+  if (!id) {
+    return res
+      .status(400)
+      .json({ success: false, message: "User ID is required" });
+  }
+
+  try {
+    let query = "";
+
+    // 🚀 STEP 1: Check the prefix to determine the table
+    if (id.startsWith("T")) {
+      // It's a Tailor
+      query = `SELECT tailor_name AS fullName FROM tailor_shop_profile WHERE tailor_id = ?`;
+    } else if (id.startsWith("C")) {
+      // It's a Customer
+      query = `SELECT customer_name AS fullName FROM customer_profile WHERE customer_id = ?`;
+    } else {
+      // Invalid ID format
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid ID format" });
+    }
+
+    // 🚀 STEP 2: Execute the targeted query
+    const [rows] = await pool.query(query, [id]);
+    console.log("Requested ID for name: ", id);
+
+    if (rows.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    // 🚀 STEP 3: Return the unified result
+    res.json({
+      success: true,
+      fullName: rows[0].fullName,
+    });
+  } catch (error) {
+    console.error("Error fetching user name:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Server error fetching name" });
+  }
+};
+
 export const loginUser = async (req, res) => {
   const { identifier, password, role } = req.body;
   console.log("Login attempt for:", identifier, " Role: ", role);

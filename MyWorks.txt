@@ -7,8 +7,14 @@ eas build:configure
 
 eas build --platform android --profile development
 
-expo install expo-dev-client
+//Expo installs
+npx expo install expo-dev-client
 
+npx expo install react-native-maps expo-location
+
+npx expo install @react-native-community/netinfo
+
+npx expo install react-native-webview
 
 inserted data into database:|
 INSERT INTO dress_types (dress_id, category, dress_name, dress_image, base_price) VALUES

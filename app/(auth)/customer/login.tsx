@@ -219,7 +219,7 @@ const CustomerLoginScreen = () => {
               />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                 <ThemedText style={{ fontSize: 16, color: labelColor }}>
-                  {showPassword ? "Show" : "Hide"}
+                  {showPassword ? "Hide" : "Show"}
                 </ThemedText>
               </TouchableOpacity>
             </View>

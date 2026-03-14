@@ -27,9 +27,9 @@ export default function TailorChatScreen() {
 
     if (socket) {
       const handleReceiveMessage = (messageData: any) => {
-        // 🚀 FIX 1: Safely compare as Strings so "32" === "32"
+        // FIX 1: Safely compare as Strings so "32" === "32"
         if (String(messageData.order_id) === String(orderId)) {
-          // 🚀 FIX 2: Only add incoming messages if they are NOT from me
+          // FIX 2: Only add incoming messages if they are NOT from me
           if (String(messageData.sender_id) !== String(userId)) {
             setMessages((prev) => [...prev, messageData]);
             console.log("Message received by Tailor: ", messageData);
@@ -43,7 +43,7 @@ export default function TailorChatScreen() {
         socket.off("receiveMessage", handleReceiveMessage);
       };
     }
-  }, [socket, orderId, userId]); // 🚀 Added userId to dependencies!
+  }, [socket, orderId, userId]); // Added userId to dependencies!
 
   const fetchChatHistory = async () => {
     try {
@@ -67,14 +67,13 @@ export default function TailorChatScreen() {
       message: newMessage.trim(),
     };
 
-    // 🚀 FIX 3: Optimistic UI - Instantly show the message on our own screen!
+    // FIX 3: Optimistic UI - Instantly show the message on our own screen!
     setMessages((prev) => [...prev, msgPayload]);
     setNewMessage(""); // Clear input instantly
 
     try {
       // 1. Emit to socket for instant delivery to Customer
       if (socket) {
-        console.log("Sent from Tailor: ", msgPayload);
         socket.emit("sendMessage", msgPayload);
       }
 
@@ -114,7 +113,7 @@ export default function TailorChatScreen() {
         </Text>
 
         {messages.map((msg, index) => {
-          // 🚀 FIX 4: Convert both to strings before comparing so left/right aligns correctly
+          // FIX 4: Convert both to strings before comparing so left/right aligns correctly
           const isMe = String(msg.sender_id) === String(userId);
 
           return (

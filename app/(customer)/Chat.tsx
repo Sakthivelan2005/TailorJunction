@@ -27,9 +27,9 @@ export default function ChatScreen() {
 
     if (socket) {
       const handleReceiveMessage = (messageData: any) => {
-        // 🚀 FIX 1: Safely compare as Strings so "123" === "123"
+        // FIX 1: Safely compare as Strings so "123" === "123"
         if (String(messageData.order_id) === String(orderId)) {
-          // 🚀 FIX 2: Only add incoming messages if they are NOT from me
+          // FIX 2: Only add incoming messages if they are NOT from me
           if (String(messageData.sender_id) !== String(userId)) {
             setMessages((prev) => [...prev, messageData]);
             pushNotification("New Message from Tailor", messageData.message);
@@ -64,7 +64,7 @@ export default function ChatScreen() {
       message: newMessage.trim(),
     };
 
-    // 🚀 FIX 3: Optimistic UI - Instantly show the message on our own screen!
+    // FIX 3: Optimistic UI - Instantly show the message on our own screen!
     setMessages((prev) => [...prev, msgPayload]);
     console.log("Hello world");
     setNewMessage(""); // Clear input instantly for a fast feel
@@ -111,7 +111,7 @@ export default function ChatScreen() {
         </Text>
 
         {messages.map((msg, index) => {
-          // 🚀 FIX 4: Convert both to strings before comparing so left/right aligns correctly
+          // FIX 4: Convert both to strings before comparing so left/right aligns correctly
           const isMe = String(msg.sender_id) === String(userId);
 
           return (

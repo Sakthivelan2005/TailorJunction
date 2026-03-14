@@ -3,11 +3,11 @@ import { useAuth } from "@/context/AuthContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 
 interface CustomerMetric {
@@ -122,7 +122,7 @@ export default function TailorCustomersScreen() {
         )}
       </ScrollView>
 
-      {/* 🚀 GRAND TOTAL EARNED (AT THE BOTTOM AS REQUESTED) */}
+      {/* GRAND TOTAL EARNED (AT THE BOTTOM AS REQUESTED) */}
       <View style={styles.footerBanner}>
         <View style={styles.footerContent}>
           <View>

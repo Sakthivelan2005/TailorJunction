@@ -1,46 +1,49 @@
 // app/(customer)/tailors.tsx
+import DressCard from "@/components/DressCard";
+import FunnyScrollView from "@/components/FunnyScrollView";
+import { Images } from "@/config/Images";
 import { useAuth } from "@/context/AuthContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import * as Location from "expo-location";
+import { router, useLocalSearchParams } from "expo-router";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
   Image,
   Modal,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
-// 🚀 Extra charges for urgency
-const URGENCY_FEES = {
-  normal: 0,
-  "2_day": 100,
-  "1_day": 200,
-};
+const URGENCY_FEES = { normal: 0, "2_day": 100, "1_day": 200 };
 
 export default function TailorsScreen() {
   const { userId, API_URL, socket } = useAuth();
+  const { filterDress } = useLocalSearchParams();
 
   const [tailors, setTailors] = useState<any[]>([]);
+  const [allDresses, setAllDresses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Location State for Distance Math
+  const [location, setLocation] =
+    useState<Location.LocationObjectCoords | null>(null);
 
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-  // 🚀 DYNAMIC MODAL STATES
+  // Booking Modal States
   const [bookingModalVisible, setBookingModalVisible] = useState(false);
   const [selectedTailor, setSelectedTailor] = useState<any>(null);
   const [tailorCatalog, setTailorCatalog] = useState<any[]>([]);
   const [isCatalogLoading, setIsCatalogLoading] = useState(false);
-
   const [selectedDress, setSelectedDress] = useState<any>(null);
   const [urgency, setUrgency] = useState<"normal" | "2_day" | "1_day">(
     "normal",
@@ -49,7 +52,10 @@ export default function TailorsScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    getUserLocation();
+    fetchDressTypes();
     fetchTailors();
+
     if (socket) {
       socket.on("tailorStatusChanged", (data) => {
         setTailors((prev) =>
@@ -64,11 +70,28 @@ export default function TailorsScreen() {
     return () => {
       if (socket) socket.off("tailorStatusChanged");
     };
-  }, [socket]);
+  }, [socket, filterDress]); // Re-fetch if filterDress changes
 
+  // 1. GET GPS LOCATION
+  const getUserLocation = async () => {
+    let { status } = await Location.requestForegroundPermissionsAsync();
+    if (status === "granted") {
+      let newLoc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      setLocation(newLoc.coords);
+    }
+  };
+
+  // 2. FETCH DATA (Now passes the dress query to backend!)
   const fetchTailors = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/customer/tailors`);
+      setLoading(true);
+      let url = `${API_URL}/api/customer/tailors`;
+      if (filterDress) {
+        url += `?dress=${encodeURIComponent(filterDress as string)}`;
+      }
+      const res = await fetch(url);
       const data = await res.json();
       if (data.success) setTailors(data.tailors);
     } catch (error) {
@@ -78,28 +101,123 @@ export default function TailorsScreen() {
     }
   };
 
-  const getImageUrl = (path: string | null) => {
-    if (!path) return "https://via.placeholder.com/150";
-    return `${API_URL}/${path.replace(/^src\//, "").replace(/^\//, "")}`;
+  const fetchDressTypes = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/dress-types`);
+      const data = await res.json();
+      if (data.success) setAllDresses(data.data);
+    } catch (error) {}
   };
 
-  // 🚀 OPEN MODAL & FETCH SPECIFIC CATALOG (Saves RAM!)
+  // FIND THE CONTEXT DRESS
+  const targetDressContext = useMemo(() => {
+    if (!filterDress || allDresses.length === 0) return null;
+    return allDresses.find(
+      (d) =>
+        d.dress_name.toLowerCase() === (filterDress as string).toLowerCase(),
+    );
+  }, [filterDress, allDresses]);
+
+  // DISTANCE MATH
+  const getDistanceInKm = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ) => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) *
+        Math.cos(lat2 * (Math.PI / 180)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+  };
+
+  const getRawDistance = (mapLink: string) => {
+    if (!location || !mapLink) return Infinity;
+    const match = mapLink.match(/(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (match)
+      return getDistanceInKm(
+        location.latitude,
+        location.longitude,
+        parseFloat(match[1]),
+        parseFloat(match[2]),
+      );
+    return Infinity;
+  };
+
+  const getImageUrl = (path: string | null) => {
+    if (!path) return Images.placeholder;
+    return {
+      uri: `${API_URL}/${path.replace(/^src\//, "").replace(/^\//, "")}`,
+    };
+  };
+
+  // HIGH PERFORMANCE SORTING & SEARCHING
+  const processedTailors = useMemo(() => {
+    let results = tailors.map((t) => ({
+      ...t,
+      distNum: getRawDistance(t.map_link),
+    }));
+
+    // Apply Search Box
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      results = results.filter(
+        (t) =>
+          t.shop_name.toLowerCase().includes(q) ||
+          t.area?.toLowerCase().includes(q),
+      );
+    }
+
+    // Apply Filters
+    if (activeFilter) {
+      results.sort((a, b) => {
+        if (activeFilter === "Rating")
+          return sortOrder === "desc"
+            ? parseFloat(b.rating) - parseFloat(a.rating)
+            : parseFloat(a.rating) - parseFloat(b.rating);
+        if (activeFilter === "Experience")
+          return sortOrder === "desc"
+            ? parseInt(b.experience_years) - parseInt(a.experience_years)
+            : parseInt(a.experience_years) - parseInt(b.experience_years);
+        if (activeFilter === "Distance")
+          return sortOrder === "asc"
+            ? a.distNum - b.distNum
+            : b.distNum - a.distNum;
+        if (activeFilter === "Price" && a.specific_price)
+          return sortOrder === "asc"
+            ? parseFloat(a.specific_price) - parseFloat(b.specific_price)
+            : parseFloat(b.specific_price) - parseFloat(a.specific_price);
+        return 0;
+      });
+    }
+
+    return results;
+  }, [tailors, searchQuery, activeFilter, sortOrder, location]);
+
+  // MODAL HANDLERS
   const handleBookNow = async (tailor: any) => {
     setSelectedTailor(tailor);
     setBookingModalVisible(true);
     setIsCatalogLoading(true);
-    setSelectedDress(null);
     setUrgency("normal");
     setMeasurementType("tailor_measure");
+
+    // Auto-select the dress if they came from the Dress Screen!
+    if (targetDressContext) setSelectedDress(targetDressContext);
+    else setSelectedDress(null);
 
     try {
       const res = await fetch(
         `${API_URL}/api/customer/tailors/${tailor.tailor_id}/details`,
       );
       const result = await res.json();
-      if (result.success) {
-        setTailorCatalog(result.pricing);
-      }
+      if (result.success) setTailorCatalog(result.pricing);
     } catch (error) {
       Alert.alert("Error", "Failed to load tailor catalog.");
     } finally {
@@ -107,22 +225,18 @@ export default function TailorsScreen() {
     }
   };
 
-  // 🚀 SUBMIT DYNAMIC ORDER
   const submitOrder = async () => {
-    if (!selectedDress) {
-      Alert.alert("Required", "Please select a dress to stitch.");
-      return;
-    }
-
+    if (!selectedDress)
+      return Alert.alert("Required", "Please select a dress.");
     setIsSubmitting(true);
-    const finalPrice = Number(selectedDress.price) + URGENCY_FEES[urgency];
+    const finalPrice =
+      Number(
+        selectedDress.price ||
+          selectedDress.specific_price ||
+          selectedDress.base_price,
+      ) + URGENCY_FEES[urgency];
 
     try {
-      // If it's urgent, simulate a payment gateway here (in a real app you'd open Stripe/Razorpay)
-      if (urgency !== "normal") {
-        console.log(`Processing upfront payment of ₹${finalPrice}...`);
-      }
-
       const response = await fetch(`${API_URL}/api/customer/orders`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -139,38 +253,14 @@ export default function TailorsScreen() {
 
       const data = await response.json();
       if (data.success) {
-        Alert.alert("Success!", "Your order has been placed successfully.");
+        Alert.alert("Success!", "Your order has been placed.");
         setBookingModalVisible(false);
-      } else {
-        Alert.alert("Failed", data.error || "Could not place order.");
-      }
+      } else Alert.alert("Failed", data.error);
     } catch (error) {
-      Alert.alert("Error", "Check your internet connection.");
+      Alert.alert("Error", "Network error.");
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const getProcessedTailors = () => {
-    let processed = tailors.filter(
-      (t) =>
-        t.shop_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.tailor_name.toLowerCase().includes(searchQuery.toLowerCase()),
-    );
-    if (activeFilter) {
-      processed.sort((a, b) => {
-        if (activeFilter === "Rating")
-          return sortOrder === "desc"
-            ? parseFloat(b.rating) - parseFloat(a.rating)
-            : parseFloat(a.rating) - parseFloat(b.rating);
-        if (activeFilter === "Experience")
-          return sortOrder === "desc"
-            ? parseInt(b.experience_years) - parseInt(a.experience_years)
-            : parseInt(a.experience_years) - parseInt(b.experience_years);
-        return 0;
-      });
-    }
-    return processed;
   };
 
   const renderFilterChip = (iconName: any, label: string) => {
@@ -183,7 +273,9 @@ export default function TailorsScreen() {
             setSortOrder(sortOrder === "desc" ? "asc" : "desc");
           else {
             setActiveFilter(label);
-            setSortOrder("desc");
+            setSortOrder(
+              label === "Distance" || label === "Price" ? "asc" : "desc",
+            );
           }
         }}
       >
@@ -208,7 +300,7 @@ export default function TailorsScreen() {
     <View style={styles.card}>
       <View style={styles.cardTop}>
         <Image
-          source={{ uri: getImageUrl(tailor.profile_photo) }}
+          source={getImageUrl(tailor.profile_photo)}
           style={styles.avatar}
         />
         <View style={styles.infoBlock}>
@@ -227,24 +319,35 @@ export default function TailorsScreen() {
             >
               {tailor.availability_status === "available"
                 ? "Available"
-                : "Unavailable"}
+                : "Busy"}
             </Text>
           </View>
-          <Text style={styles.ownerText}>Owner of {tailor.tailor_name}</Text>
+
           <Text style={styles.subText}>
-            ⭐ {tailor.rating || "New"} | 📍 {tailor.area || "Nearby"}
+            ⭐ {tailor.rating} | 📍{" "}
+            {tailor.distNum !== Infinity
+              ? `${tailor.distNum.toFixed(1)} km`
+              : "N/A"}
           </Text>
-          <Text style={styles.subText}>
-            ⏱ Experience: {tailor.experience_years || 0} years
-          </Text>
+
+          {/* DYNAMIC PRICE DISPLAY */}
+          {filterDress && tailor.specific_price ? (
+            <View style={styles.highlightPrice}>
+              <Text style={styles.highlightPriceText}>
+                Stitches {filterDress} for ₹{tailor.specific_price}
+              </Text>
+            </View>
+          ) : (
+            <Text style={styles.subText}>
+              ⏱ Experience: {tailor.experience_years || 0} years
+            </Text>
+          )}
         </View>
       </View>
-
       <View style={styles.cardBottom}>
         <TouchableOpacity style={styles.viewServicesBtn}>
           <Text style={styles.viewServicesText}>View Portfolio</Text>
         </TouchableOpacity>
-
         <TouchableOpacity
           style={[
             styles.bookBtn,
@@ -259,37 +362,73 @@ export default function TailorsScreen() {
     </View>
   );
 
-  // 🚀 DYNAMIC CALCULATIONS FOR UI
-  const currentBasePrice = selectedDress ? Number(selectedDress.price) : 0;
-  const currentTotal = currentBasePrice + URGENCY_FEES[urgency];
+  const currentBasePrice = selectedDress
+    ? Number(
+        selectedDress.price ||
+          selectedDress.specific_price ||
+          selectedDress.base_price,
+      )
+    : 0;
   const isPaymentRequired = urgency !== "normal";
 
   return (
     <View style={styles.container}>
-      <Text style={styles.headerTitle}>Search Your Best Tailor</Text>
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={{ paddingRight: 15 }}
+        >
+          <MaterialCommunityIcons name="arrow-left" size={26} color="#1e3a8a" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Find Tailors</Text>
+        <View style={{ width: 26 }} />
+      </View>
 
+      {/* SELECTED DRESS CONTEXT CARD */}
+      {targetDressContext && (
+        <View style={styles.contextCard}>
+          <Text style={styles.contextLabel}>
+            Currently searching tailors who make:
+          </Text>
+          <DressCard
+            dress={targetDressContext}
+            getImageUrl={getImageUrl}
+            onPress={() => {}}
+          />
+          <TouchableOpacity
+            style={styles.clearFilterBtn}
+            onPress={() => router.setParams({ filterDress: "" })}
+          >
+            <Text style={styles.clearFilterText}>Clear Dress Filter</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* SEARCH BAR */}
       <View style={styles.searchContainer}>
         <MaterialCommunityIcons name="magnify" size={22} color="#94a3b8" />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search by shop name..."
+          placeholder="Search shop name or area..."
           placeholderTextColor="#94a3b8"
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
       </View>
 
+      {/* FILTERS */}
       <View style={{ height: 50, marginBottom: 10 }}>
-        <ScrollView
+        <FunnyScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterScroll}
+          onRefreshData={async () => {}}
         >
-          {renderFilterChip("hanger", "Dress")}
-          {renderFilterChip("cash", "Price")}
+          {renderFilterChip("map-marker-distance", "Distance")}
+          {filterDress && renderFilterChip("cash", "Price")}
           {renderFilterChip("star", "Rating")}
           {renderFilterChip("briefcase", "Experience")}
-        </ScrollView>
+        </FunnyScrollView>
       </View>
 
       {loading ? (
@@ -298,23 +437,27 @@ export default function TailorsScreen() {
           color="#3b82f6"
           style={{ marginTop: 50 }}
         />
+      ) : processedTailors.length === 0 ? (
+        <Text style={styles.emptyText}>
+          No tailors found matching your criteria.
+        </Text>
       ) : (
         <FlatList
-          data={getProcessedTailors()}
+          data={processedTailors}
           keyExtractor={(item) => item.tailor_id.toString()}
           renderItem={renderTailor}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 20 }}
+          contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 15 }}
         />
       )}
 
-      {/* 🚀 DYNAMIC BOOKING MODAL */}
+      {/* DYNAMIC BOOKING MODAL */}
       <Modal
         visible={bookingModalVisible}
         animationType="slide"
         transparent={true}
       >
-        <SafeAreaView style={styles.modalOverlay}>
+        <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
@@ -329,7 +472,6 @@ export default function TailorsScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* 1. DRESS SELECTION CATALOG */}
             <Text style={styles.label}>1. Select Dress Pattern</Text>
             {isCatalogLoading ? (
               <ActivityIndicator
@@ -342,23 +484,24 @@ export default function TailorsScreen() {
                 This tailor hasn't added any dresses yet.
               </Text>
             ) : (
-              <ScrollView
+              <FunnyScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 style={{ marginBottom: 20 }}
+                onRefreshData={async () => {}}
               >
                 {tailorCatalog.map((item, idx) => (
                   <TouchableOpacity
                     key={idx}
                     style={[
-                      styles.dressCard,
+                      styles.dressCardModal,
                       selectedDress?.dress_id === item.dress_id &&
                         styles.dressCardActive,
                     ]}
                     onPress={() => setSelectedDress(item)}
                   >
                     <Image
-                      source={{ uri: getImageUrl(item.dress_image) }}
+                      source={getImageUrl(item.dress_image)}
                       style={styles.dressThumb}
                     />
                     <Text
@@ -374,10 +517,9 @@ export default function TailorsScreen() {
                     <Text style={styles.dressPrice}>₹{item.price}</Text>
                   </TouchableOpacity>
                 ))}
-              </ScrollView>
+              </FunnyScrollView>
             )}
 
-            {/* 2. MEASUREMENT TYPE */}
             <Text style={styles.label}>2. Measurement Method</Text>
             <View style={styles.optionsRow}>
               {[
@@ -404,7 +546,6 @@ export default function TailorsScreen() {
               ))}
             </View>
 
-            {/* 3. URGENCY & DYNAMIC PRICING */}
             <Text style={styles.label}>3. Delivery Urgency</Text>
             <View style={styles.optionsRow}>
               {[
@@ -440,13 +581,13 @@ export default function TailorsScreen() {
               ))}
             </View>
 
-            {/* 🚀 DYNAMIC SUBMIT BUTTON */}
             <View style={styles.totalRow}>
               <View>
                 <Text style={styles.totalLabel}>Total Estimate</Text>
-                <Text style={styles.totalAmount}>₹{currentTotal}</Text>
+                <Text style={styles.totalAmount}>
+                  ₹{currentBasePrice + URGENCY_FEES[urgency]}
+                </Text>
               </View>
-
               <TouchableOpacity
                 style={[
                   styles.payBtn,
@@ -475,39 +616,64 @@ export default function TailorsScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </SafeAreaView>
+        </View>
       </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  container: { flex: 1, backgroundColor: "#f8fafc" },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 15,
+    paddingVertical: 15,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  headerTitle: { fontSize: 18, fontWeight: "bold", color: "#1e3a8a" },
+
+  contextCard: {
     backgroundColor: "#eff6ff",
+    margin: 15,
     padding: 15,
-    paddingTop: 50,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: "#bfdbfe",
   },
-  headerTitle: {
-    fontSize: 20,
+  contextLabel: {
+    fontSize: 12,
+    color: "#3b82f6",
     fontWeight: "bold",
-    color: "#1e3a8a",
-    marginBottom: 15,
+    marginBottom: 8,
+    textTransform: "uppercase",
   },
+  clearFilterBtn: { marginTop: 10, alignItems: "center" },
+  clearFilterText: {
+    color: "#ef4444",
+    fontSize: 12,
+    fontWeight: "bold",
+    textDecorationLine: "underline",
+  },
+
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#fff",
+    marginHorizontal: 15,
+    marginTop: 15,
     paddingHorizontal: 15,
     paddingVertical: 12,
-    borderRadius: 25,
-    elevation: 2,
-    marginBottom: 15,
+    borderRadius: 15,
+    elevation: 1,
     borderWidth: 1,
     borderColor: "#e2e8f0",
   },
   searchInput: { flex: 1, marginLeft: 10, fontSize: 15, color: "#000" },
-  filterScroll: { alignItems: "center", paddingRight: 20 },
+  filterScroll: { alignItems: "center", paddingLeft: 15, paddingRight: 20 },
   filterChip: {
     flexDirection: "row",
     alignItems: "center",
@@ -531,10 +697,12 @@ const styles = StyleSheet.create({
 
   card: {
     backgroundColor: "#fff",
-    borderRadius: 15,
-    padding: 15,
     marginBottom: 15,
+    padding: 15,
+    borderRadius: 15,
     elevation: 2,
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
   },
   cardTop: { flexDirection: "row", marginBottom: 15 },
   avatar: {
@@ -551,9 +719,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   tailorName: { fontSize: 16, fontWeight: "bold", color: "#1e3a8a" },
-  ownerText: { fontSize: 12, color: "#64748b", marginBottom: 6 },
   statusText: { fontSize: 12, fontWeight: "bold" },
-  subText: { fontSize: 12, color: "#475569", marginTop: 2, fontWeight: "500" },
+  subText: { fontSize: 12, color: "#475569", marginTop: 4, fontWeight: "500" },
+  highlightPrice: {
+    backgroundColor: "#ecfdf5",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignSelf: "flex-start",
+    marginTop: 4,
+  },
+  highlightPriceText: { color: "#059669", fontSize: 12, fontWeight: "bold" },
   cardBottom: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -576,9 +752,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   bookBtnText: { color: "#fff", fontWeight: "bold", fontSize: 13 },
-  emptyText: { color: "#64748b", fontStyle: "italic", textAlign: "center" },
+  emptyText: {
+    color: "#64748b",
+    fontStyle: "italic",
+    textAlign: "center",
+    marginTop: 40,
+  },
 
-  // 🚀 MODAL STYLES
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.6)",
@@ -605,8 +785,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginTop: 5,
   },
-
-  dressCard: {
+  dressCardModal: {
     width: 100,
     marginRight: 15,
     padding: 8,
@@ -630,7 +809,6 @@ const styles = StyleSheet.create({
     height: 30,
   },
   dressPrice: { fontSize: 13, fontWeight: "bold", color: "#10b981" },
-
   optionsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -647,7 +825,6 @@ const styles = StyleSheet.create({
   },
   activeOption: { backgroundColor: "#3b82f6", borderColor: "#3b82f6" },
   optionText: { fontSize: 13, color: "#475569", fontWeight: "600" },
-
   urgencyBtn: {
     flex: 1,
     paddingVertical: 10,
@@ -660,7 +837,6 @@ const styles = StyleSheet.create({
   activeUrgencyBtn: { backgroundColor: "#1e3a8a", borderColor: "#1e3a8a" },
   urgencyLabel: { fontSize: 13, fontWeight: "bold", color: "#475569" },
   urgencyPrice: { fontSize: 11, color: "#10b981", marginTop: 2 },
-
   totalRow: {
     flexDirection: "row",
     justifyContent: "space-between",

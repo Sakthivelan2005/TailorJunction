@@ -2,35 +2,46 @@
 import db from "../db.js";
 
 // --- GET ALL TAILORS (For Home & Tailors Screen) ---
+// backend/src/controllers/customer.controller.js
+
 export const getTailors = async (req, res) => {
+  const { dress } = req.query; // 🚀 Catch the dress filter from the URL
+
   try {
-    // This query grabs tailor details, calculates their average rating, and finds their lowest price
-    const [tailors] = await db.query(`
-      SELECT 
-        t.tailor_id, 
-        t.tailor_name, 
-        t.shop_name, 
-        t.profile_photo, 
-        t.availability_status, 
-        t.experience_years, 
-        t.area,
-        COALESCE(ROUND(AVG(r.rating), 1), 0) as rating,
-        COALESCE(MIN(tp.price), 0) as starting_price
+    let query = `
+      SELECT t.tailor_id, t.tailor_name, t.shop_name, t.profile_photo, t.availability_status, t.map_link, t.area,
+             COALESCE(AVG(r.rating), 0) as rating,
+             t.experience_years
       FROM tailor_shop_profile t
       LEFT JOIN reviews r ON t.tailor_id = r.tailor_id
-      LEFT JOIN tailor_pricing tp ON t.tailor_id = tp.tailor_id
-      GROUP BY t.tailor_id
-    `);
+    `;
+    let queryParams = [];
 
+    // 🚀 IF DRESS IS SELECTED: Join the pricing table and filter!
+    if (dress) {
+      query = `
+        SELECT t.tailor_id, t.tailor_name, t.shop_name, t.profile_photo, t.availability_status, t.map_link, t.area,
+               COALESCE(AVG(r.rating), 0) as rating,
+               t.experience_years,
+               tp.price as specific_price 
+        FROM tailor_shop_profile t
+        JOIN tailor_pricing tp ON t.tailor_id = tp.tailor_id
+        JOIN dress_types dt ON tp.dress_id = dt.dress_id
+        LEFT JOIN reviews r ON t.tailor_id = r.tailor_id
+        WHERE LOWER(dt.dress_name) = LOWER(?)
+      `;
+      queryParams.push(dress);
+    }
+
+    query += ` GROUP BY t.tailor_id`;
+
+    const [tailors] = await db.query(query, queryParams);
     res.json({ success: true, tailors });
   } catch (error) {
-    console.error("Error fetching tailors:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Server error fetching tailors" });
+    console.error("Fetch tailors error:", error);
+    res.status(500).json({ success: false, error: "Server error" });
   }
 };
-
 // --- PLACE A NEW ORDER ---
 export const placeOrder = async (req, res) => {
   const { customerId, tailorId, dressId, urgency, measurementType } = req.body;

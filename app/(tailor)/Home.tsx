@@ -10,7 +10,7 @@ import {
   Switch,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 
 interface DashboardData {
@@ -36,12 +36,12 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [isAvailable, setIsAvailable] = useState(false);
 
-  const { userId, resetAuth, API_URL, socket } = useAuth(); // 🚀 Pulled socket from AuthContext
+  const { userId, resetAuth, API_URL, socket } = useAuth(); // Pulled socket from AuthContext
 
   useEffect(() => {
     fetchDashboardData();
 
-    // 🚀 SOCKET LISTENERS FOR REAL-TIME STATS
+    // SOCKET LISTENERS FOR REAL-TIME STATS
     if (socket && userId) {
       // 1. When a new order arrives (Updates Pending Orders)
       socket.on("newOrderPlaced", (payload: { tailorId: string }) => {

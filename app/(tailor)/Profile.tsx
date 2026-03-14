@@ -13,7 +13,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 
 interface ProfileData {
@@ -257,7 +257,6 @@ export default function ProfileScreen() {
     if (!path) return "https://via.placeholder.com/150";
     return `${API_URL}/${path.replace(/^src\//, "").replace(/^\//, "")}`;
   }; // Debug log for profile photo URL
-  console.log("Dress Image URL:", pricing[0].dress_image); // Debug log for dress image URL
 
   return (
     <KeyboardAvoidingView

@@ -8,6 +8,7 @@ import { Server } from "socket.io";
 import { fileURLToPath } from "url";
 import {
   checkPhoneExists,
+  getUserFullName,
   loginUser,
   signup,
   verifyOtp,
@@ -15,6 +16,7 @@ import {
 import { getChatHistory, saveMessage } from "./controllers/chat.controller.js";
 import { updateAutoCloseSetting } from "./controllers/tailor.controller.js";
 import db from "./db.js";
+import adminRoutes from "./routes/admin.routes.js";
 import customerRoutes from "./routes/customer.routes.js";
 import dressTypesRoutes from "./routes/dressTypes.js";
 import orderRoutes from "./routes/order.routes.js";
@@ -146,6 +148,11 @@ io.on("connection", (socket) => {
 
       // 4. Force the winning Tailor's Order list to refresh instantly
       io.emit("newOrderPlaced", { tailorId: acceptData.tailorId });
+
+      io.to("ADMIN_ROOM").emit("liveAdminMetrics", {
+        orderValue: acceptData.total_price, // Or whatever variable holds the price
+        message: `<span class="text-highlight">Order #${realOrderId}</span> was just accepted for ₹${acceptData.total_price}!`,
+      });
     } catch (error) {
       console.error("Failed to insert urgent order:", error);
     }
@@ -193,6 +200,10 @@ app.post("/api/login", loginUser);
 app.post("/api/signup", signup);
 app.post("/api/verify-otp", verifyOtp);
 app.post("/api/check-phone", checkPhoneExists);
+app.get("/api/users/:id/name", getUserFullName);
+
+//admin Routes
+app.use("/api/admin", adminRoutes);
 
 app.use("/api", dressTypesRoutes);
 app.use("/api", shopDetailsRoutes);
