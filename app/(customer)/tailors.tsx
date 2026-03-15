@@ -19,6 +19,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const URGENCY_FEES = { normal: 0, "2_day": 100, "1_day": 200 };
 
@@ -345,7 +346,15 @@ export default function TailorsScreen() {
         </View>
       </View>
       <View style={styles.cardBottom}>
-        <TouchableOpacity style={styles.viewServicesBtn}>
+        <TouchableOpacity
+          onPress={() =>
+            router.push({
+              pathname: "/(customer)/TailorDetails",
+              params: { tailorId: tailor.tailor_id },
+            })
+          }
+          style={styles.viewServicesBtn}
+        >
           <Text style={styles.viewServicesText}>View Portfolio</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -422,7 +431,7 @@ export default function TailorsScreen() {
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterScroll}
-          onRefreshData={async () => {}}
+          onRefreshData={fetchTailors}
         >
           {renderFilterChip("map-marker-distance", "Distance")}
           {filterDress && renderFilterChip("cash", "Price")}
@@ -457,7 +466,7 @@ export default function TailorsScreen() {
         animationType="slide"
         transparent={true}
       >
-        <View style={styles.modalOverlay}>
+        <SafeAreaView style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
@@ -487,8 +496,7 @@ export default function TailorsScreen() {
               <FunnyScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                style={{ marginBottom: 20 }}
-                onRefreshData={async () => {}}
+                onRefreshData={fetchDressTypes}
               >
                 {tailorCatalog.map((item, idx) => (
                   <TouchableOpacity
@@ -616,7 +624,7 @@ export default function TailorsScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </SafeAreaView>
       </Modal>
     </View>
   );

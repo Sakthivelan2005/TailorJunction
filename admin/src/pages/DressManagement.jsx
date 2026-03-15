@@ -21,6 +21,11 @@ export default function DressManagement() {
     if (data.success) setDresses(data.data);
   };
 
+  const getImageUrl = (path) => {
+    if (!path) return "https://via.placeholder.com/150";
+    return `${API_URL}/${path.replace(/^src\//, "").replace(/^\//, "")}`;
+  };
+
   const handleAddDress = async (e) => {
     e.preventDefault();
     try {
@@ -121,6 +126,7 @@ export default function DressManagement() {
             <thead>
               <tr>
                 <th>ID</th>
+                <th>Image</th>
                 <th>Name</th>
                 <th>Category</th>
                 <th>Base Price</th>
@@ -131,6 +137,19 @@ export default function DressManagement() {
               {dresses.map((dress) => (
                 <tr key={dress.dress_id}>
                   <td className="text-gray">#{dress.dress_id}</td>
+                  <td>
+                    <img
+                      src={getImageUrl(dress.dress_image)}
+                      alt={dress.dress_name}
+                      style={{
+                        width: "50px",
+                        height: "50px",
+                        objectFit: "cover",
+                        borderRadius: "8px",
+                        border: "1px solid #e2e8f0",
+                      }}
+                    />
+                  </td>
                   <td style={{ fontWeight: "600" }}>{dress.dress_name}</td>
                   <td>
                     <span className="badge">{dress.category}</span>

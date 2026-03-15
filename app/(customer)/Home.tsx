@@ -20,6 +20,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function CustomerHome() {
   const { userId, resetAuth, API_URL, socket, setFullName, fullName } =
@@ -498,7 +499,7 @@ export default function CustomerHome() {
           <View style={styles.modalContent}>
             {/* STEP 1: SELECT DRESS */}
             {bookingStep === "select_dress" && (
-              <>
+              <SafeAreaView>
                 <Text style={styles.modalTitle}>Select Dress Type</Text>
 
                 {/* SEARCH BOX INSIDE MODAL */}
@@ -554,12 +555,12 @@ export default function CustomerHome() {
                 >
                   <Text style={styles.cancelText}>Cancel</Text>
                 </TouchableOpacity>
-              </>
+              </SafeAreaView>
             )}
 
             {/* STEP 2: MEASUREMENT */}
             {bookingStep === "select_measurement" && (
-              <>
+              <SafeAreaView>
                 <Text style={styles.modalTitle}>Measurement Type</Text>
                 <TouchableOpacity
                   style={[
@@ -622,22 +623,22 @@ export default function CustomerHome() {
                 >
                   <Text style={styles.cancelText}>Back</Text>
                 </TouchableOpacity>
-              </>
+              </SafeAreaView>
             )}
 
             {/* STEP 3 & 4 & 5... (Kept the same for brevity, rendering your existing UI logic) */}
             {/* SEARCHING */}
             {bookingStep === "searching" && (
-              <View style={styles.centerCol}>
+              <SafeAreaView style={styles.centerCol}>
                 <ActivityIndicator size="large" color="#ef4444" />
                 <Text style={styles.searchingText}>Finding tailors...</Text>
                 <Text style={styles.timerText}>{searchTimer}s</Text>
-              </View>
+              </SafeAreaView>
             )}
 
             {/* TIMEOUT */}
             {bookingStep === "timeout" && (
-              <View style={styles.centerCol}>
+              <SafeAreaView style={styles.centerCol}>
                 <MaterialCommunityIcons
                   name="timer-sand-empty"
                   size={50}
@@ -652,12 +653,12 @@ export default function CustomerHome() {
                 >
                   <Text style={styles.cancelText}>Close</Text>
                 </TouchableOpacity>
-              </View>
+              </SafeAreaView>
             )}
 
             {/* FOUND */}
             {bookingStep === "found" && matchedTailor && (
-              <View style={styles.centerCol}>
+              <SafeAreaView style={styles.centerCol}>
                 <MaterialCommunityIcons
                   name="check-decagram"
                   size={50}
@@ -696,7 +697,7 @@ export default function CustomerHome() {
                 >
                   <Text style={styles.cancelText}>Done</Text>
                 </TouchableOpacity>
-              </View>
+              </SafeAreaView>
             )}
           </View>
         </View>

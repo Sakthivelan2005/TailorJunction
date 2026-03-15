@@ -72,6 +72,7 @@ export default function ContactScreen() {
           <TextInput
             style={styles.input}
             placeholder="Enter your email ID"
+            placeholderTextColor={styles.contactText.color}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -81,7 +82,8 @@ export default function ContactScreen() {
           <Text style={styles.label}>Complaint Message</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
-            placeholder="Describe your issue or feedback here"
+            placeholder="Describe your issue or feedback here..."
+            placeholderTextColor={styles.contactText.color}
             value={message}
             onChangeText={setMessage}
             multiline
@@ -173,7 +175,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#eff6ff",
     padding: 15,
     paddingTop: 50,
-    bottom: 50,
   },
   headerTitle: {
     fontSize: 24,
@@ -244,5 +245,5 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: "#e2e8f0",
   },
-  socialIcon: { marginHorizontal: 15 },
+  socialIcon: { marginHorizontal: 15, marginBottom: 30 },
 });

@@ -25,6 +25,7 @@ import { useAuth, useShopDetails } from "@/context/AuthContext";
 import { specializations } from "@/data/Specialization";
 import { useToast } from "@/hooks/useToast";
 import { type Specialization } from "@/types/shopDetails";
+import { SafeAreaView } from "react-native-safe-area-context";
 import TailorSection from "./TailorSection";
 
 /* ---------------- TYPES ---------------- */
@@ -303,7 +304,7 @@ const ShopSpecialization: React.FC<{ onNext: () => void }> = ({ onNext }) => {
   `;
 
   return (
-    <>
+    <SafeAreaView>
       <FlatList
         data={specializations}
         numColumns={2}
@@ -409,6 +410,7 @@ const ShopSpecialization: React.FC<{ onNext: () => void }> = ({ onNext }) => {
                         errors.houseNo && styles.inputError,
                       ]}
                       placeholder="House No"
+                      placeholderTextColor={styles.placeholderText.color}
                       value={houseNo}
                       onChangeText={(t) => {
                         setHouseNo(t);
@@ -423,6 +425,7 @@ const ShopSpecialization: React.FC<{ onNext: () => void }> = ({ onNext }) => {
                     <TextInput
                       style={[styles.input, errors.street && styles.inputError]}
                       placeholder="Street"
+                      placeholderTextColor={styles.placeholderText.color}
                       value={street}
                       onChangeText={(t) => {
                         setStreet(t);
@@ -441,6 +444,7 @@ const ShopSpecialization: React.FC<{ onNext: () => void }> = ({ onNext }) => {
                     <TextInput
                       style={[styles.input, errors.area && styles.inputError]}
                       placeholder="Area"
+                      placeholderTextColor={styles.placeholderText.color}
                       value={area}
                       onChangeText={(t) => {
                         setArea(t);
@@ -458,6 +462,7 @@ const ShopSpecialization: React.FC<{ onNext: () => void }> = ({ onNext }) => {
                         errors.district && styles.inputError,
                       ]}
                       placeholder="District"
+                      placeholderTextColor={styles.placeholderText.color}
                       value={district}
                       onChangeText={(t) => {
                         setDistrict(t);
@@ -475,6 +480,7 @@ const ShopSpecialization: React.FC<{ onNext: () => void }> = ({ onNext }) => {
                   <TextInput
                     style={[styles.input, errors.pincode && styles.inputError]}
                     placeholder="Pincode"
+                    placeholderTextColor={styles.placeholderText.color}
                     value={pincode}
                     keyboardType="number-pad"
                     maxLength={6}
@@ -638,7 +644,7 @@ const ShopSpecialization: React.FC<{ onNext: () => void }> = ({ onNext }) => {
 
       {/* 🚀 FREE OPENSTREETMAP MODAL */}
       <Modal visible={isMapVisible} animationType="slide">
-        <View style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setIsMapVisible(false)}>
               <Ionicons name="close" size={28} color="#000" />
@@ -677,9 +683,9 @@ const ShopSpecialization: React.FC<{ onNext: () => void }> = ({ onNext }) => {
               )}
             </TouchableOpacity>
           </View>
-        </View>
+        </SafeAreaView>
       </Modal>
-    </>
+    </SafeAreaView>
   );
 };
 

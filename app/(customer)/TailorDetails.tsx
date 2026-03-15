@@ -12,7 +12,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 
 export default function TailorDetailsScreen() {
@@ -316,7 +316,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: 20,
-    paddingTop: 50,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderColor: "#e2e8f0",
