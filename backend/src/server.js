@@ -65,7 +65,13 @@ io.on("connection", (socket) => {
   // CHAT MESSAGES
   socket.on("sendMessage", (data) => {
     console.log(`💬 Message from ${data.sender_id}:`, data.message);
-    io.to(data.receiver_id).emit("receiveMessage", data); //Send it directly to the receiver's private room
+    io.to(data.receiver_id).emit("receiveMessage", data);
+
+    // 🚀 ADMIN TELEMETRY: Chat interception
+    io.to("ADMIN_ROOM").emit("liveAdminMetrics", {
+      orderValue: 0,
+      message: `[COMM-LINK SECURED] Encrypted data packet routed from node ${data.sender_id} to ${data.receiver_id}.`,
+    });
   });
 
   //  2. OPTIMIZED UBER-STYLE URGENT ORDER BROADCAST
@@ -73,22 +79,26 @@ io.on("connection", (socket) => {
     try {
       const tempOrderId = `URG-${Date.now()}`;
 
-      // Query the DB for Tailors who are 'available' AND have this dress_id
       const [eligibleTailors] = await db.query(
         `SELECT t.tailor_id 
          FROM tailor_shop_profile t
          JOIN tailor_pricing tp ON t.tailor_id = tp.tailor_id
          WHERE t.availability_status = 'available' 
          AND tp.dress_id = ?`,
-        [data.dress_id], // Matches the dress ID sent by the customer
+        [data.dress_id],
       );
-      console.log("eligible tailor: ", eligibleTailors);
+
       if (eligibleTailors.length > 0) {
         console.log(
-          ` Sending Urgent Order to ${eligibleTailors.length} eligible tailors.`,
+          `Sending Urgent Order to ${eligibleTailors.length} eligible tailors.`,
         );
 
-        // Loop through and ping ONLY the eligible tailors in their private rooms!
+        // 🚀 ADMIN TELEMETRY: Algorithm Broadcasting
+        io.to("ADMIN_ROOM").emit("liveAdminMetrics", {
+          orderValue: 0,
+          message: `[ALGORITHM ENGAGED] Neural-routing protocol activated. Broadcasting dress signature <span class="text-highlight">#${data.dress_id}</span> to ${eligibleTailors.length} optimal grid nodes.`,
+        });
+
         eligibleTailors.forEach((tailor) => {
           io.to(tailor.tailor_id).emit("incomingUrgentOrder", {
             orderId: tempOrderId,
@@ -97,7 +107,13 @@ io.on("connection", (socket) => {
         });
       } else {
         console.log("❌ No eligible tailors found for this urgent order.");
-        // Optional: Ping the customer back saying no one is available
+
+        // 🚀 ADMIN TELEMETRY: Grid Failure
+        io.to("ADMIN_ROOM").emit("liveAdminMetrics", {
+          orderValue: 0,
+          message: `[SYSTEM ALERT] Grid saturation reached. Demand spike for dress <span class="text-highlight">#${data.dress_id}</span> failed to locate available nodes.`,
+        });
+
         socket.emit("noTailorsAvailable", {
           message:
             "No tailors are available for this specific dress right now.",
@@ -111,7 +127,6 @@ io.on("connection", (socket) => {
   // FIRST TAILOR TO ACCEPT WINS
   socket.on("acceptUrgentOrder", async (acceptData) => {
     try {
-      // 1. Officially insert the order into the database!
       const [result] = await db.query(
         `INSERT INTO orders 
          (customer_id, tailor_id, urgency, measurement_type, order_status, dress_id, dress_image, price, payment_required)
@@ -129,7 +144,6 @@ io.on("connection", (socket) => {
 
       const realOrderId = result.insertId;
 
-      // 2. Tell the Customer that this specific tailor won
       io.emit("urgentOrderAccepted", {
         tempOrderId: acceptData.orderId,
         orderId: realOrderId,
@@ -141,17 +155,16 @@ io.on("connection", (socket) => {
         },
       });
 
-      // 3. Tell all OTHER tailors to close their popup
       socket.broadcast.emit("closeUrgentPopup", {
         orderId: acceptData.orderId,
       });
 
-      // 4. Force the winning Tailor's Order list to refresh instantly
       io.emit("newOrderPlaced", { tailorId: acceptData.tailorId });
 
+      // 🚀 ADMIN TELEMETRY: Order Secured (Upgraded Vibe)
       io.to("ADMIN_ROOM").emit("liveAdminMetrics", {
-        orderValue: acceptData.total_price, // Or whatever variable holds the price
-        message: `<span class="text-highlight">Order #${realOrderId}</span> was just accepted for ₹${acceptData.total_price}!`,
+        orderValue: acceptData.total_price,
+        message: `[TRANSACTION VERIFIED] Fast-Track <span class="text-highlight">Order #${realOrderId}</span> locked by node '${acceptData.shop_name}'. Asset value secured: ₹${acceptData.total_price}.`,
       });
     } catch (error) {
       console.error("Failed to insert urgent order:", error);
@@ -164,7 +177,6 @@ io.on("connection", (socket) => {
 
   socket.on("deleteExpiredChat", async ({ orderId }) => {
     try {
-      // 🚀 FIX: Check 'completed_at' instead of 'order_datetime'
       const [orders] = await db.query(
         `SELECT completed_at FROM orders 
          WHERE order_id = ? 
@@ -179,10 +191,14 @@ io.on("connection", (socket) => {
           orderId,
         ]);
 
-        // 🚀 OPTIMIZATION: Instead of global io.emit, broadcast only to users in this chat
         io.emit("chatClosed", { orderId });
-
         console.log(`🗑️ Deleted expired chat for Order #${orderId}`);
+
+        // 🚀 ADMIN TELEMETRY: Data Purge
+        io.to("ADMIN_ROOM").emit("liveAdminMetrics", {
+          orderValue: 0,
+          message: `[DATA PURGE] Security protocol 24-HR executed. Telemetry logs for <span class="text-highlight">Order #${orderId}</span> permanently scrubbed from the mainframe.`,
+        });
       }
     } catch (error) {
       console.error("Error deleting chat:", error);
@@ -241,6 +257,12 @@ cron.schedule(
 
       if (result.affectedRows > 0) {
         io.emit("bulkStatusUpdate");
+
+        // 🚀 ADMIN TELEMETRY: System Hibernation
+        io.to("ADMIN_ROOM").emit("liveAdminMetrics", {
+          orderValue: 0,
+          message: `[CRON-SYS] Nightly cascade complete. Successfully shifted ${result.affectedRows} grid nodes into hibernation mode.`,
+        });
       }
     } catch (error) {
       console.error("❌ Failed to run auto-close cron job:", error);
@@ -264,6 +286,12 @@ cron.schedule("0 * * * *", async () => {
 
     if (result.affectedRows > 0) {
       console.log(`✅ Deleted ${result.affectedRows} expired chat messages.`);
+
+      // 🚀 ADMIN TELEMETRY: System Cleanup
+      io.to("ADMIN_ROOM").emit("liveAdminMetrics", {
+        orderValue: 0,
+        message: `[AUTO-MAINTENANCE] Hourly cleanup routine finalized. Evaporated ${result.affectedRows} expired communication fragments from the database.`,
+      });
     }
   } catch (error) {
     console.error("❌ Failed to run chat cleanup cron job:", error);

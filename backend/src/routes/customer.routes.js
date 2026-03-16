@@ -5,16 +5,14 @@ import {
     getMyTailors,
     getTailorDetails,
     getTailors,
-    placeOrder,
     placeStandardOrder,
     submitComplaint,
-    submitReview,
+    submitReview
 } from "../controllers/customer.controller.js";
 
 const router = express.Router();
 
 router.get("/tailors", getTailors);
-router.post("/order", placeOrder);
 router.get("/:customerId/orders", getCustomerOrders);
 router.post("/complaint", submitComplaint);
 router.post("/orders/:orderId/review", submitReview);

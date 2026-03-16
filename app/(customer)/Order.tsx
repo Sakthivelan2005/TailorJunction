@@ -1,22 +1,23 @@
 // app/(customer)/Orders.tsx
 import FunnyScrollView from "@/components/FunnyScrollView";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/useToast";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 
 export default function CustomerOrdersScreen() {
   const { userId, API_URL, socket } = useAuth();
+  const { showToast } = useToast();
   const [pending, setPending] = useState<any[]>([]);
   const [completed, setCompleted] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -128,7 +129,7 @@ export default function CustomerOrdersScreen() {
   // --- CANCEL ORDER API CALL ---
   const handleCancelOrder = async () => {
     if (!cancelData.reason.trim()) {
-      Alert.alert("Required", "Please provide a reason for cancellation.");
+      showToast("Please provide a reason for cancellation.", "warning");
       return;
     }
 
@@ -147,15 +148,15 @@ export default function CustomerOrdersScreen() {
       const data = await res.json();
 
       if (data.success) {
-        Alert.alert("Cancelled", data.message);
+        showToast(data.message, "success");
         setCancelModalVisible(false);
         fetchOrders();
       } else {
-        // 🚀 Catches the exact Error Message from your MySQL Trigger (State 45000)
-        Alert.alert("Cancellation Failed", data.message || data.error);
+        //Catches the exact Error Message from your MySQL Trigger (State 45000)
+        showToast("Cancellation Failed", data.message || data.error);
       }
     } catch (error) {
-      Alert.alert("Error", "Network error. Try again.");
+      showToast("Network error. Try again.", "error");
     }
   };
 

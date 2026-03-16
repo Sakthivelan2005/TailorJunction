@@ -3,13 +3,13 @@ import DressCard from "@/components/DressCard";
 import FunnyScrollView from "@/components/FunnyScrollView";
 import { Images } from "@/config/Images";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/useToast";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { router } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Image,
   Linking,
@@ -26,6 +26,7 @@ export default function CustomerHome() {
   const { userId, resetAuth, API_URL, socket, setFullName, fullName } =
     useAuth();
 
+  const { showToast } = useToast();
   // Location States
   const [location, setLocation] =
     useState<Location.LocationObjectCoords | null>(null);
@@ -206,7 +207,9 @@ export default function CustomerHome() {
   const modalDresses = useMemo(() => {
     if (!modalDressSearch) return allDresses;
     return allDresses.filter((d) =>
-      d.dress_name.toLowerCase().includes(modalDressSearch.toLowerCase()),
+      (d.dress_name || "")
+        .toLowerCase()
+        .includes(modalDressSearch.toLowerCase()),
     );
   }, [allDresses, modalDressSearch]);
 
@@ -216,13 +219,14 @@ export default function CustomerHome() {
     const q = globalSearch.toLowerCase();
 
     const mTailors = tailors
-      .filter((t) => t.shop_name.toLowerCase().includes(q))
+      .filter((t) => (t.shop_name || "").toLowerCase().includes(q))
       .map((t) => ({ ...t, searchType: "tailor" }));
+
     const mDresses = allDresses
       .filter(
         (d) =>
-          d.dress_name.toLowerCase().includes(q) ||
-          d.category.toLowerCase().includes(q),
+          (d.dress_name || "").toLowerCase().includes(q) ||
+          (d.category || "").toLowerCase().includes(q),
       )
       .map((d) => ({ ...d, searchType: "dress" }));
 
@@ -231,10 +235,9 @@ export default function CustomerHome() {
 
   // --- EVENT HANDLERS ---
   const handleDressClick = (dress: any) => {
-    // Navigates to Tailor Screen with pre-filled search/filter
     router.push({
       pathname: "/(customer)/tailors",
-      params: { filterDress: dress.dress_name },
+      params: { dressId: dress.dress_id },
     });
   };
 
@@ -673,7 +676,7 @@ export default function CustomerHome() {
                     style={[styles.payBtn, { marginTop: 20 }]}
                     onPress={() => {
                       setPaymentDone(true);
-                      Alert.alert("Success", "Payment received!");
+                      showToast("Payment received!", "success");
                     }}
                   >
                     <Text style={styles.confirmText}>Pay Securely via UPI</Text>

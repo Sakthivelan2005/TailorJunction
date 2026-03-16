@@ -5,18 +5,19 @@ import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 // 1. Import the notification helper
 import FunnyScrollView from "@/components/FunnyScrollView";
+import { useToast } from "@/hooks/useToast";
 import { pushNotification } from "@/utils/notificationConfig";
 
 export default function TailorOrdersScreen() {
   const { userId, API_URL, socket } = useAuth();
+  const { showToast } = useToast();
   const [pending, setPending] = useState<any[]>([]);
   const [completed, setCompleted] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,9 +34,31 @@ export default function TailorOrdersScreen() {
     }, 60000);
 
     if (socket && userId) {
-      socket.on("newOrderPlaced", (data: { tailorId: string }) => {
-        if (data.tailorId === userId) fetchOrders();
-      });
+      socket.on(
+        "newOrderPlaced",
+        (data: {
+          orderId: string;
+          tailorId: string;
+          price: string;
+          urgency: string;
+        }) => {
+          if (data.tailorId === userId) {
+            if (
+              data.orderId == undefined &&
+              data.price == undefined &&
+              data.urgency == undefined
+            ) {
+              null;
+            } else {
+              pushNotification(
+                "New Order Received",
+                `Your order ID is ${data.orderId}. Earnings: ₹ ${data.price}. ${data.urgency == "normal" ? "No urgency" : `Complete within ${data.urgency.replace("_", " ")}`} `,
+              );
+            }
+            fetchOrders();
+          }
+        },
+      );
 
       // 2. Listen for order status changes (Specifically Cancellations)
       socket.on(
@@ -161,7 +184,7 @@ export default function TailorOrdersScreen() {
       const data = await res.json();
       if (data.success) fetchOrders();
     } catch (err) {
-      Alert.alert("Error", "Network error updating order.");
+      showToast("Network error updating order.", "error");
     }
   };
 

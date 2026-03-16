@@ -187,15 +187,14 @@ export const deleteDressType = async (req, res) => {
   }
 };
 
-// --- 6. GET DASHBOARD ANALYTICS ---
+// --- 6. GET DASHBOARD ANALYTICS (Using 'demand_analytics') ---
 export const getDashboardData = async (req, res) => {
   try {
-    // 1. KPI Stats
     const [[revenueResult]] = await db.query(
-      `SELECT COALESCE(SUM(price), 0) as total FROM orders WHERE order_status IN ('completed', 'accepted')`,
+      `SELECT COALESCE(SUM(total_revenue), 0) as total FROM demand_analytics`,
     );
     const [[ordersResult]] = await db.query(
-      `SELECT COUNT(*) as total FROM orders`,
+      `SELECT COALESCE(SUM(total_orders), 0) as total FROM demand_analytics`,
     );
     const [[tailorsResult]] = await db.query(
       `SELECT COUNT(*) as total FROM tailor_shop_profile WHERE availability_status = 'available'`,
@@ -204,33 +203,29 @@ export const getDashboardData = async (req, res) => {
       `SELECT COUNT(*) as total FROM tailor_shop_profile WHERE verification_status = 'pending'`,
     );
 
-    // 2. Revenue Trend (Last 7 Days)
     const [revenueTrend] = await db.query(`
-      SELECT DATE_FORMAT(order_datetime, '%b %d') as date, COALESCE(SUM(price), 0) as revenue
-      FROM orders 
-      WHERE order_datetime >= DATE(NOW()) - INTERVAL 7 DAY
-      GROUP BY DATE(order_datetime), DATE_FORMAT(order_datetime, '%b %d')
-      ORDER BY DATE(order_datetime) ASC
+      SELECT DATE_FORMAT(date, '%b %d') as date, COALESCE(SUM(total_revenue), 0) as revenue
+      FROM demand_analytics 
+      WHERE date >= DATE(NOW()) - INTERVAL 7 DAY
+      GROUP BY date, DATE_FORMAT(date, '%b %d')
+      ORDER BY date ASC
     `);
 
-    // 3. Dress Popularity
     const [dressPopularity] = await db.query(`
-      SELECT d.dress_name as name, COUNT(o.order_id) as orders
-      FROM orders o
-      JOIN dress_types d ON o.dress_id = d.dress_id
-      GROUP BY d.dress_id, d.dress_name
+      SELECT d.dress_name as name, SUM(da.total_orders) as orders, MAX(da.demand_score) as max_score
+      FROM demand_analytics da
+      JOIN dress_types d ON da.dress_id = d.dress_id
+      GROUP BY da.dress_id, d.dress_name
       ORDER BY orders DESC
       LIMIT 5
     `);
 
-    // 4. Urgency Split (Normal vs 1-Day vs 2-Day)
     const [urgencySplit] = await db.query(`
       SELECT urgency as name, COUNT(*) as value
       FROM orders
       GROUP BY urgency
     `);
 
-    // 5. Recent Activity Ticker
     const [recentActivity] = await db.query(`
       SELECT order_id as id, DATE_FORMAT(order_datetime, '%h:%i %p') as time, 
       CONCAT('<span class="text-highlight">Order #', order_id, '</span> placed for ₹', price) as text
@@ -243,7 +238,7 @@ export const getDashboardData = async (req, res) => {
       success: true,
       stats: {
         revenue: Number(revenueResult.total),
-        orders: ordersResult.total,
+        orders: Number(ordersResult.total),
         activeTailors: tailorsResult.total,
         pendingVerifications: pendingResult.total,
       },

@@ -1,24 +1,25 @@
 // --- CUSTOMER CONTROLLER ---
 import db from "../db.js";
 
-// --- GET ALL TAILORS (For Home & Tailors Screen) ---
 // backend/src/controllers/customer.controller.js
-
+// --- GET ALL TAILORS (For Home & Tailors Screen) ---
 export const getTailors = async (req, res) => {
-  const { dress } = req.query; // 🚀 Catch the dress filter from the URL
+  const { dressId } = req.query; // 🚀 Now catching the exact ID
 
   try {
     let query = `
       SELECT t.tailor_id, t.tailor_name, t.shop_name, t.profile_photo, t.availability_status, t.map_link, t.area,
              COALESCE(AVG(r.rating), 0) as rating,
-             t.experience_years
+             t.experience_years,
+             (SELECT MIN(price) FROM tailor_pricing WHERE tailor_id = t.tailor_id) as starting_price
       FROM tailor_shop_profile t
       LEFT JOIN reviews r ON t.tailor_id = r.tailor_id
+      GROUP BY t.tailor_id
     `;
     let queryParams = [];
 
-    // 🚀 IF DRESS IS SELECTED: Join the pricing table and filter!
-    if (dress) {
+    // 🚀 IF DRESS ID IS PROVIDED: Only show tailors who sew it, and get the exact price!
+    if (dressId) {
       query = `
         SELECT t.tailor_id, t.tailor_name, t.shop_name, t.profile_photo, t.availability_status, t.map_link, t.area,
                COALESCE(AVG(r.rating), 0) as rating,
@@ -26,47 +27,18 @@ export const getTailors = async (req, res) => {
                tp.price as specific_price 
         FROM tailor_shop_profile t
         JOIN tailor_pricing tp ON t.tailor_id = tp.tailor_id
-        JOIN dress_types dt ON tp.dress_id = dt.dress_id
         LEFT JOIN reviews r ON t.tailor_id = r.tailor_id
-        WHERE LOWER(dt.dress_name) = LOWER(?)
+        WHERE tp.dress_id = ?
+        GROUP BY t.tailor_id, tp.price
       `;
-      queryParams.push(dress);
+      queryParams.push(dressId);
     }
-
-    query += ` GROUP BY t.tailor_id`;
 
     const [tailors] = await db.query(query, queryParams);
     res.json({ success: true, tailors });
   } catch (error) {
     console.error("Fetch tailors error:", error);
     res.status(500).json({ success: false, error: "Server error" });
-  }
-};
-// --- PLACE A NEW ORDER ---
-export const placeOrder = async (req, res) => {
-  const { customerId, tailorId, dressId, urgency, measurementType } = req.body;
-
-  try {
-    const [result] = await db.query(
-      `INSERT INTO orders (customer_id, tailor_id, dress_id, urgency, measurement_type, order_status) 
-       VALUES (?, ?, ?, ?, ?, 'pending')`,
-      [customerId, tailorId, dressId, urgency, measurementType],
-    );
-
-    // 🚀 THE FIX: Use a static event name and pass tailorId in the payload
-    req.io.emit("newOrderPlaced", {
-      orderId: result.insertId,
-      tailorId: tailorId,
-    });
-
-    res.json({
-      success: true,
-      orderId: result.insertId,
-      message: "Order placed successfully!",
-    });
-  } catch (error) {
-    console.error("Error placing order:", error);
-    res.status(500).json({ success: false, message: "Failed to place order" });
   }
 };
 
@@ -309,8 +281,12 @@ export const placeStandardOrder = async (req, res) => {
     );
 
     // Instantly notify the specific tailor's app
-    req.io.emit("newOrderPlaced", { tailorId });
-
+    req.io.emit("newOrderPlaced", {
+      orderId: result.insertId,
+      tailorId: tailorId,
+      price: price,
+      urgency: urgency,
+    });
     res.json({
       success: true,
       message: "Order placed successfully!",

@@ -1,10 +1,10 @@
 // app/(customer)/contact.tsx
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/useToast";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -12,18 +12,19 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 
 export default function ContactScreen() {
   const { userId, API_URL } = useAuth();
+  const { showToast } = useToast();
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
     if (!email || !message) {
-      Alert.alert("Error", "Please fill in both email and message fields.");
+      showToast("Please fill in both email and message fields.", "error");
       return;
     }
 
@@ -37,9 +38,9 @@ export default function ContactScreen() {
       const data = await response.json();
 
       if (data.success) {
-        Alert.alert(
-          "Success",
+        showToast(
           "Your complaint has been registered. Our team will contact you soon.",
+          "success",
         );
         setEmail("");
         setMessage("");
@@ -47,7 +48,7 @@ export default function ContactScreen() {
         throw new Error(data.message);
       }
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to submit complaint.");
+      showToast(error.message || "Failed to submit complaint.", "error");
     } finally {
       setLoading(false);
     }

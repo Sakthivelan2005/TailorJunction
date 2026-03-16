@@ -508,7 +508,7 @@ const PersonalDetails: React.FC<{ onNext: () => void }> = ({ onNext }) => {
               />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                 <ThemedText style={{ fontSize: 16, color: colors.primary }}>
-                  {showPassword ? "Show" : "Hide"}
+                  {showPassword ? "Hide" : "Show"}
                 </ThemedText>
               </TouchableOpacity>
             </View>

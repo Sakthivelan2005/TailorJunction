@@ -8,16 +8,47 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import TailorVerification from "./pages/TailorVerification";
 
+// 🚀 BULLETPROOF PROTECTED ROUTE
 const ProtectedRoute = ({ children }) => {
   const { token } = useAdminAuth();
-  return token ? children : <Navigate to="/login" />;
+
+  // Strict check: Prevents the "null" or "undefined" string bug from bypassing security
+  const isAuthenticated = token && token !== "null" && token !== "undefined";
+
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
+};
+
+// 🚀 PUBLIC ROUTE
+// Prevents admins who are ALREADY logged in from seeing the Login/Signup pages
+const PublicRoute = ({ children }) => {
+  const { token } = useAdminAuth();
+  const isAuthenticated = token && token !== "null" && token !== "undefined";
+
+  return isAuthenticated ? <Navigate to="/" replace /> : children;
 };
 
 const AppRoutes = () => {
   return (
     <Routes>
-      <Route path="/signup" element={<Signup />} />
-      <Route path="/login" element={<Login />} />
+      {/* Wrap public pages in the PublicRoute */}
+      <Route
+        path="/signup"
+        element={
+          <PublicRoute>
+            <Signup />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/login"
+        element={
+          <PublicRoute>
+            <Login />
+          </PublicRoute>
+        }
+      />
+
+      {/* Protected Admin Routes */}
       <Route
         path="/*"
         element={

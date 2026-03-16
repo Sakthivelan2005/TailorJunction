@@ -1,11 +1,11 @@
 import FunnyScrollView from "@/components/FunnyScrollView";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/useToast";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Linking,
   Modal,
@@ -14,10 +14,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function TailorDetailsScreen() {
   const { tailorId } = useLocalSearchParams();
   const { userId, API_URL } = useAuth();
+  const { showToast } = useToast();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -73,20 +75,21 @@ export default function TailorDetailsScreen() {
           dress_image: selectedDress.dress_image,
           measurement_type: measurementType,
           price: selectedDress.price,
+          urgency: "normal",
         }),
       });
       const result = await res.json();
 
       if (result.success) {
-        Alert.alert("Success!", "Your order has been sent to the tailor.");
+        showToast("Your order has been sent to the tailor.", "success");
         setBookingModalVisible(false);
         // Navigate back to the Orders screen so they can track it!
         router.push("/(customer)/Order");
       } else {
-        Alert.alert("Error", result.error);
+        showToast(result.error, "error");
       }
     } catch (error) {
-      Alert.alert("Error", "Network issue. Please try again.");
+      showToast("Network issue. Please try again.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -235,7 +238,7 @@ export default function TailorDetailsScreen() {
 
       {/* 🚀 STANDARD BOOKING MODAL */}
       <Modal visible={bookingModalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
+        <SafeAreaView style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Confirm Booking</Text>
 
@@ -301,7 +304,7 @@ export default function TailorDetailsScreen() {
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </SafeAreaView>
       </Modal>
     </View>
   );

@@ -14,15 +14,35 @@ import {
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { Text, TextInput } from "react-native"; // 🚀 Imported Text & TextInput
 import "react-native-reanimated";
+
+// This forces all Text and TextInputs to ignore the phone's accessibility font size,
+// preventing your UI from exploding on phones with "Huge" font settings.
+interface TextWithDefaultProps extends Text {
+  defaultProps?: { allowFontScaling?: boolean };
+}
+interface TextInputWithDefaultProps extends TextInput {
+  defaultProps?: { allowFontScaling?: boolean };
+}
+
+// Disable scaling for <Text>
+(Text as unknown as TextWithDefaultProps).defaultProps =
+  (Text as unknown as TextWithDefaultProps).defaultProps || {};
+(Text as unknown as TextWithDefaultProps).defaultProps!.allowFontScaling =
+  false;
+
+// Disable scaling for <TextInput>
+(TextInput as unknown as TextInputWithDefaultProps).defaultProps =
+  (TextInput as unknown as TextInputWithDefaultProps).defaultProps || {};
+(
+  TextInput as unknown as TextInputWithDefaultProps
+).defaultProps!.allowFontScaling = false;
 
 export const unstable_settings = {
   anchor: "(tabs)",
 };
 
-/**
- * ✅ This component runs INSIDE providers
- */
 function AppStack() {
   const colorScheme = useColorScheme();
   const { error } = useAuth();

@@ -7,7 +7,6 @@ import * as Location from "expo-location";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Image,
   Modal,
@@ -15,7 +14,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { WebView } from "react-native-webview";
 
@@ -209,7 +208,7 @@ const ShopSpecialization: React.FC<{ onNext: () => void }> = ({ onNext }) => {
         showToast("Exact location locked in!", "success");
       }
     } catch (error) {
-      Alert.alert("Error", "Could not fetch address details.");
+      showToast("Could not fetch address details.", "error");
     } finally {
       setIsGeocoding(false);
       setIsMapVisible(false);
@@ -304,7 +303,7 @@ const ShopSpecialization: React.FC<{ onNext: () => void }> = ({ onNext }) => {
   `;
 
   return (
-    <SafeAreaView>
+    <View>
       <FlatList
         data={specializations}
         numColumns={2}
@@ -685,7 +684,7 @@ const ShopSpecialization: React.FC<{ onNext: () => void }> = ({ onNext }) => {
           </View>
         </SafeAreaView>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 

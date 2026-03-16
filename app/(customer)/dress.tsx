@@ -67,7 +67,7 @@ export default function AllDressesScreen() {
   const handleDressClick = (dress: any) => {
     router.push({
       pathname: "/(customer)/tailors",
-      params: { filterDress: dress.dress_name },
+      params: { dressId: dress.dress_id },
     });
   };
 
