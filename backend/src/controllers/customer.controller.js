@@ -4,7 +4,7 @@ import db from "../db.js";
 // backend/src/controllers/customer.controller.js
 // --- GET ALL TAILORS (For Home & Tailors Screen) ---
 export const getTailors = async (req, res) => {
-  const { dressId } = req.query; // 🚀 Now catching the exact ID
+  const { dressId } = req.query; // Now catching the exact ID
 
   try {
     let query = `
@@ -18,7 +18,7 @@ export const getTailors = async (req, res) => {
     `;
     let queryParams = [];
 
-    // 🚀 IF DRESS ID IS PROVIDED: Only show tailors who sew it, and get the exact price!
+    // IF DRESS ID IS PROVIDED: Only show tailors who sew it, and get the exact price!
     if (dressId) {
       query = `
         SELECT t.tailor_id, t.tailor_name, t.shop_name, t.profile_photo, t.availability_status, t.map_link, t.area,
@@ -47,7 +47,7 @@ export const getCustomerOrders = async (req, res) => {
   const { customerId } = req.params;
 
   try {
-    // 🚀 Fetch Pending & Accepted Orders
+    // Fetch Pending & Accepted Orders
     const [pendingOrders] = await db.query(
       `SELECT o.order_id, d.dress_name as cloth_type, o.order_status as status, 
               o.tailor_id, t.shop_name, o.urgency, o.order_datetime, o.price
@@ -59,7 +59,7 @@ export const getCustomerOrders = async (req, res) => {
       [customerId],
     );
 
-    // 🚀 Fetch Completed Orders
+    // Fetch Completed Orders
     const [completedOrders] = await db.query(
       `SELECT o.order_id, d.dress_name as cloth_type, o.order_status as status, 
               o.tailor_id, o.order_datetime, t.shop_name, r.review_text as feedback, r.rating, o.price
@@ -114,7 +114,7 @@ export const submitReview = async (req, res) => {
       [orderId, customerId, tailorId, rating, review_text],
     );
 
-    // 🚀 Broadcast to the specific Tailor to update their Orders page
+    // Broadcast to the specific Tailor to update their Orders page
     req.io.emit("newReview", { tailorId, orderId, rating, review_text });
 
     // Also broadcast to update the global tailor rating average
@@ -197,7 +197,7 @@ export const cancelOrder = async (req, res) => {
     await conn.beginTransaction();
 
     // 1. Attempt to insert cancellation.
-    // 🚀 If > 3 hours, YOUR MySQL trigger will throw an error here and stop execution!
+    // If > 3 hours, YOUR MySQL trigger will throw an error here and stop execution!
     await conn.query(
       `INSERT INTO order_cancellations (order_id, customer_id, reason) VALUES (?, ?, ?)`,
       [orderId, customerId, reason],
@@ -218,7 +218,7 @@ export const cancelOrder = async (req, res) => {
     );
 
     if (order.length > 0 && order[0].tailor_id) {
-      // 🚀 Pass the "reason" in the payload so the Tailor's app can display it
+      // Pass the "reason" in the payload so the Tailor's app can display it
       req.io.emit("orderStatusUpdated", {
         orderId,
         status: "cancelled",
@@ -234,7 +234,7 @@ export const cancelOrder = async (req, res) => {
   } catch (error) {
     await conn.rollback();
 
-    // 🚀 Catch YOUR specific MySQL Trigger Error (State 45000)
+    // Catch YOUR specific MySQL Trigger Error (State 45000)
     if (error.sqlState === "45000") {
       return res
         .status(400)
@@ -260,7 +260,7 @@ export const placeStandardOrder = async (req, res) => {
     urgency,
   } = req.body;
 
-  // 🚀 Dynamic Payment Logic: Urgent orders require upfront payment
+  // Dynamic Payment Logic: Urgent orders require upfront payment
   const paymentRequired = urgency === "normal" ? false : true;
 
   try {

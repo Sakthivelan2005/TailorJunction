@@ -14,7 +14,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { WebView } from "react-native-webview";
 
@@ -74,7 +74,7 @@ const ShopSpecialization: React.FC<{ onNext: () => void }> = ({ onNext }) => {
 
   const [allDressTypes, setAllDressTypes] = useState<DressType[]>([]);
 
-  // 🚀 VALIDATION STATE
+  // VALIDATION STATE
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   // MAP STATES
@@ -226,7 +226,7 @@ const ShopSpecialization: React.FC<{ onNext: () => void }> = ({ onNext }) => {
     if (formatted.length === 6) clearError("pincode");
   };
 
-  // 🚀 STRICT VALIDATION FUNCTION
+  // STRICT VALIDATION FUNCTION
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
 
@@ -641,7 +641,7 @@ const ShopSpecialization: React.FC<{ onNext: () => void }> = ({ onNext }) => {
         }
       />
 
-      {/* 🚀 FREE OPENSTREETMAP MODAL */}
+      {/* FREE OPENSTREETMAP MODAL */}
       <Modal visible={isMapVisible} animationType="slide">
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
@@ -723,7 +723,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FAFAFA",
   },
 
-  // 🚀 ERROR STYLES
+  // ERROR STYLES
   inputError: { borderColor: "#ef4444", backgroundColor: "#fef2f2" },
   errorText: {
     color: "#ef4444",

@@ -37,7 +37,7 @@ export const updateMeasurements = async (req, res) => {
       orderId,
     ]);
 
-    // 🚀 Instantly notify anyone looking at this order that measurements changed!
+    // Instantly notify anyone looking at this order that measurements changed!
     req.io.emit("measurementsUpdated", {
       orderId: Number(orderId),
       measurements: measurements,

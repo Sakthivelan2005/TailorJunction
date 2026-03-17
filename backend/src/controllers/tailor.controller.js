@@ -81,7 +81,7 @@ export const getProfile = async (req, res) => {
       [tailorId],
     );
 
-    // 🚀 Added tp.updated_at so the frontend can calculate the 24hr timer
+    // Added tp.updated_at so the frontend can calculate the 24hr timer
     const [pricing] = await db.query(
       `SELECT tp.dress_id, d.dress_name as cloth_type, d.base_price, tp.price, tp.dress_image, tp.last_updated as updated_at 
        FROM tailor_pricing tp
@@ -247,7 +247,7 @@ export const updateTailorPricing = async (req, res) => {
     req.io.emit("catalogUpdated", { tailorId });
     res.json({ success: true, message: "Pricing updated securely." });
   } catch (error) {
-    // 🚀 Catch the custom MySQL Trigger Error!
+    // Catch the custom MySQL Trigger Error!
     if (error.code === "ER_SIGNAL_EXCEPTION" || error.sqlState === "45000") {
       return res.status(400).json({
         success: false,
@@ -269,7 +269,7 @@ export const addNewCustomDress = async (req, res) => {
   const { dress_name, category, price } = req.body;
   const requestedPrice = Number(price);
 
-  // 🚀 The URL will now be perfectly clean: /images/women/Green_Chudi.png
+  // The URL will now be perfectly clean: /images/women/Green_Chudi.png
   const catLower = category ? category.toLowerCase() : "misc";
   const dress_image = req.file
     ? `/images/${catLower}/${req.file.filename}`
@@ -295,7 +295,6 @@ export const addNewCustomDress = async (req, res) => {
         });
       }
     } else {
-      // 🚀 SCENARIO B: Brand new dress!
       // Insert into dress_types WITH the newly generated dress_image URL
       const [newDress] = await db.query(
         `INSERT INTO dress_types (dress_name, category, base_price, dress_image) VALUES (?, ?, ?, ?)`,

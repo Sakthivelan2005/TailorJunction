@@ -18,7 +18,7 @@ export default function CustomerChatScreen() {
   const params = useLocalSearchParams();
   const { userId, API_URL, socket } = useAuth();
 
-  // 🚀 FIX 1: Safely extract IDs and handle multiple possible key names
+  // FIX 1: Safely extract IDs and handle multiple possible key names
   const orderId = Array.isArray(params.orderId)
     ? params.orderId[0]
     : params.orderId;
@@ -36,7 +36,7 @@ export default function CustomerChatScreen() {
 
     if (!socket || !userId) return;
 
-    // 🚀 THE FIX: A dedicated function to join the room safely without spaces
+    // THE FIX: A dedicated function to join the room safely without spaces
     const joinRoom = () => {
       const safeRoomId = String(userId).trim();
       socket.emit("joinUserRoom", safeRoomId);
@@ -46,13 +46,13 @@ export default function CustomerChatScreen() {
     // 1. Join immediately when the screen opens
     joinRoom();
 
-    // 2. 🚀 THE MAGIC: Re-join automatically if the connection drops and reconnects!
+    // 2. THE MAGIC: Re-join automatically if the connection drops and reconnects!
     socket.on("connect", joinRoom);
 
     const handleReceiveMessage = (messageData: any) => {
       console.log("👀 RAW SOCKET EVENT HIT CUSTOMER:", messageData);
 
-      // 🚀 Apply .trim() everywhere to guarantee flawless matching
+      // Apply .trim() everywhere to guarantee flawless matching
       if (String(messageData.order_id).trim() === String(orderId).trim()) {
         if (String(messageData.sender_id).trim() !== String(userId).trim()) {
           setMessages((prev) => [...prev, messageData]);
@@ -92,7 +92,7 @@ export default function CustomerChatScreen() {
   const sendMessage = async () => {
     if (!newMessage.trim() || !receiverId) return;
 
-    // 🚀 FIX 3: Force everything to String and trim spaces for Socket.io room matching
+    // FIX 3: Force everything to String and trim spaces for Socket.io room matching
     const msgPayload = {
       order_id: Number(orderId),
       sender_id: String(userId).trim(),

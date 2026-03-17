@@ -10,7 +10,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 
 interface TailorMetric {
@@ -168,7 +168,7 @@ export default function MyTailorsScreen() {
         )}
       </FunnyScrollView>
 
-      {/* 🚀 GRAND TOTAL SPENT (AT THE BOTTOM) */}
+      {/* GRAND TOTAL SPENT (AT THE BOTTOM) */}
       <View style={styles.footerBanner}>
         <View style={styles.footerContent}>
           <View>

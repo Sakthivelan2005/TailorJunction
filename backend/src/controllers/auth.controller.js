@@ -15,7 +15,7 @@ export const getUserFullName = async (req, res) => {
   try {
     let query = "";
 
-    // 🚀 STEP 1: Check the prefix to determine the table
+    // STEP 1: Check the prefix to determine the table
     if (id.startsWith("T")) {
       // It's a Tailor
       query = `SELECT tailor_name AS fullName FROM tailor_shop_profile WHERE tailor_id = ?`;
@@ -29,7 +29,7 @@ export const getUserFullName = async (req, res) => {
         .json({ success: false, message: "Invalid ID format" });
     }
 
-    // 🚀 STEP 2: Execute the targeted query
+    // STEP 2: Execute the targeted query
     const [rows] = await pool.query(query, [id]);
     console.log("Requested ID for name: ", id);
 
@@ -39,7 +39,7 @@ export const getUserFullName = async (req, res) => {
         .json({ success: false, message: "User not found" });
     }
 
-    // 🚀 STEP 3: Return the unified result
+    // STEP 3: Return the unified result
     res.json({
       success: true,
       fullName: rows[0].fullName,
@@ -104,7 +104,7 @@ export const signup = async (req, res) => {
     const data = req.body;
     console.log("Received signup data:", data);
 
-    // 🚀 GHOST BUSTER LOGIC 1: Catch incomplete signups by Phone or Email
+    // GHOST BUSTER LOGIC 1: Catch incomplete signups by Phone or Email
     const [existingUsers] = await connection.execute(
       `SELECT user_id FROM users WHERE (phone = ? OR email = ?) AND role = ?`,
       [data.phone, data.email, data.role],
@@ -221,7 +221,7 @@ export const checkPhoneExists = async (req, res) => {
     if (rows.length > 0) {
       const userId = rows[0].user_id;
 
-      // 🚀 GHOST BUSTER LOGIC 2: Intercept the "Send OTP" check
+      // GHOST BUSTER LOGIC 2: Intercept the "Send OTP" check
       if (role === "tailor") {
         const [profile] = await pool.execute(
           `SELECT shop_name FROM tailor_shop_profile WHERE tailor_id = ?`,

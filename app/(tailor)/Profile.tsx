@@ -35,13 +35,13 @@ interface ProfileData {
     base_price: number;
     price: string;
     dress_image: string | null;
-    updated_at?: string; // 🚀 Added timestamp from backend
+    updated_at?: string; // Added timestamp from backend
   }[];
 }
 
 export default function ProfileScreen() {
   const { userId, API_URL, socket } = useAuth();
-  const { showToast } = useToast(); // 🚀 Grab Toast Hook
+  const { showToast } = useToast(); // Grab Toast Hook
   const [data, setData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -49,7 +49,7 @@ export default function ProfileScreen() {
   const [isEditing, setIsEditing] = useState(false);
   const [editedPrices, setEditedPrices] = useState<Record<number, string>>({});
 
-  // 🚀 Timer States
+  // Timer States
   const [nextEditTime, setNextEditTime] = useState<string | null>(null);
   const [canEditPrices, setCanEditPrices] = useState(true);
 
@@ -76,7 +76,7 @@ export default function ProfileScreen() {
     }
   }, [userId, socket]);
 
-  // 🚀 Calculate the 24-hour countdown timer
+  // Calculate the 24-hour countdown timer
   useEffect(() => {
     if (!data?.pricing || data.pricing.length === 0) return;
 
@@ -84,7 +84,7 @@ export default function ProfileScreen() {
     let latestUpdate = 0;
     data.pricing.forEach((item) => {
       if (item.updated_at) {
-        // 🚀 Ensure proper Date parsing regardless of timezone format
+        // Ensure proper Date parsing regardless of timezone format
         const time = new Date(item.updated_at).getTime();
         if (time > latestUpdate) latestUpdate = time;
       }
@@ -104,7 +104,7 @@ export default function ProfileScreen() {
       // How much time has passed since the last edit?
       const timePassed = now - latestUpdate;
 
-      // 🚀 If LESS than 24 hours have passed, lock the button!
+      // If LESS than 24 hours have passed, lock the button!
       if (timePassed < msIn24Hours && timePassed > 0) {
         const msLeft = msIn24Hours - timePassed;
         const hrs = Math.floor(msLeft / (1000 * 60 * 60));
@@ -113,7 +113,7 @@ export default function ProfileScreen() {
         setNextEditTime(`${hrs}h ${mins}m`);
         setCanEditPrices(false);
       } else {
-        // 🚀 24 hours have passed, unlock the button!
+        // 24 hours have passed, unlock the button!
         setNextEditTime(null);
         setCanEditPrices(true);
       }
@@ -145,7 +145,7 @@ export default function ProfileScreen() {
     }
   };
 
-  // 🚀 Handle Edit Button Click
+  // Handle Edit Button Click
   const handleEditClick = () => {
     if (!canEditPrices) {
       showToast(
@@ -178,7 +178,7 @@ export default function ProfileScreen() {
         setIsEditing(false);
         fetchProfile(); // This will pull the new updated_at and restart the 24hr timer!
       } else {
-        // 🚀 Catch the Trigger Error from backend
+        // Catch the Trigger Error from backend
         showToast(result.message || "Failed to update prices.", "error");
       }
     } catch (error) {
@@ -295,7 +295,7 @@ export default function ProfileScreen() {
           <View style={styles.sectionHeader}>
             <View>
               <Text style={styles.sectionTitle}>Catalog & Pricing</Text>
-              {/* 🚀 TIMER DISPLAY */}
+              {/* TIMER DISPLAY */}
               {!canEditPrices && nextEditTime && (
                 <Text style={styles.timerText}>
                   Next Edit access: {nextEditTime}
@@ -409,6 +409,7 @@ export default function ProfileScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="e.g. Designer Lehenga"
+                placeholderTextColor={styles.addressText.color}
                 value={newDress.name}
                 onChangeText={(t) => setNewDress({ ...newDress, name: t })}
               />
@@ -440,6 +441,7 @@ export default function ProfileScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Price"
+                placeholderTextColor={styles.addressText.color}
                 keyboardType="numeric"
                 value={newDress.price}
                 onChangeText={(t) => setNewDress({ ...newDress, price: t })}
@@ -520,7 +522,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 18, fontWeight: "bold", color: "#0f172a" },
 
-  // 🚀 Timer text style
+  // Timer text style
   timerText: {
     fontSize: 11,
     color: "#ef4444",

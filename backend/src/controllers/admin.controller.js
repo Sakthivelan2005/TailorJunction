@@ -10,7 +10,7 @@ export const adminSignup = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // 🚀 We DO NOT pass user_id. Your 'before_insert_users' trigger handles it!
+    // We DO NOT pass user_id. Your 'before_insert_users' trigger handles it!
     await db.query(
       `INSERT INTO users (role, phone, email, password_hash, auth_provider) 
        VALUES ('admin', ?, ?, ?, 'email')`,
@@ -134,7 +134,7 @@ export const verifyTailor = async (req, res) => {
 
     await connection.commit();
 
-    // 🚀 4. REAL-TIME SOCKET: Notify the specific tailor so their app unlocks instantly!
+    // 4. REAL-TIME SOCKET: Notify the specific tailor so their app unlocks instantly!
     if (req.io) {
       req.io.to(tailorId).emit("accountVerificationUpdate", { status: action });
     }

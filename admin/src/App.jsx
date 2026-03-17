@@ -8,7 +8,6 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import TailorVerification from "./pages/TailorVerification";
 
-// 🚀 BULLETPROOF PROTECTED ROUTE
 const ProtectedRoute = ({ children }) => {
   const { token } = useAdminAuth();
 
@@ -18,7 +17,7 @@ const ProtectedRoute = ({ children }) => {
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
-// 🚀 PUBLIC ROUTE
+// PUBLIC ROUTE
 // Prevents admins who are ALREADY logged in from seeing the Login/Signup pages
 const PublicRoute = ({ children }) => {
   const { token } = useAdminAuth();

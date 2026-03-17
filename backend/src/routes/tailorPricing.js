@@ -26,7 +26,7 @@ router.post("/tailor-pricing", async (req, res) => {
   try {
     await conn.beginTransaction();
 
-    // 🚀 Added dress_image to the INSERT and ON DUPLICATE KEY UPDATE clauses
+    // Added dress_image to the INSERT and ON DUPLICATE KEY UPDATE clauses
     const sql = `
       INSERT INTO tailor_pricing (tailor_id, dress_id, price, dress_image)
       VALUES (?, ?, ?, ?)
@@ -37,7 +37,7 @@ router.post("/tailor-pricing", async (req, res) => {
     `;
 
     for (const item of prices) {
-      // 🚀 Passing item.dress_image (or null if it doesn't exist)
+      // Passing item.dress_image (or null if it doesn't exist)
       await conn.execute(sql, [
         tailor_id,
         item.dress_id,

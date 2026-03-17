@@ -31,7 +31,7 @@ export default function CustomerOrdersScreen() {
     text: "",
   });
 
-  // 🚀 Cancellation Modal States
+  // Cancellation Modal States
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
   const [cancelData, setCancelData] = useState({ orderId: 0, reason: "" });
 
@@ -176,7 +176,7 @@ export default function CustomerOrdersScreen() {
     });
   };
 
-  // 🚀 FRONTEND 3-HOUR CHECK (Matches DB Trigger)
+  // FRONTEND 3-HOUR CHECK (Matches DB Trigger)
   const isWithinCancelWindow = (orderDatetime: string) => {
     const orderTime = new Date(orderDatetime).getTime();
     const now = new Date().getTime();
@@ -331,7 +331,7 @@ export default function CustomerOrdersScreen() {
                 </Text>
               )}
 
-              {/* 🚀 THE CANCELLATION BUTTON AREA */}
+              {/* THE CANCELLATION BUTTON AREA */}
               <View style={{ flex: 1, alignItems: "flex-end" }}>
                 {canCancel ? (
                   <TouchableOpacity
@@ -466,7 +466,7 @@ export default function CustomerOrdersScreen() {
         );
       })}
 
-      {/* 🚀 REVIEW MODAL */}
+      {/* REVIEW MODAL */}
       <Modal visible={reviewModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -514,7 +514,7 @@ export default function CustomerOrdersScreen() {
         </View>
       </Modal>
 
-      {/* 🚀 CANCELLATION MODAL */}
+      {/* CANCELLATION MODAL */}
       <Modal visible={cancelModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -675,7 +675,7 @@ const styles = StyleSheet.create({
   },
   unreadCountText: { color: "#fff", fontSize: 8, fontWeight: "bold" },
 
-  // 🚀 Cancellation Styles
+  // Cancellation Styles
   cancelOrderBtn: {
     paddingHorizontal: 12,
     paddingVertical: 8,

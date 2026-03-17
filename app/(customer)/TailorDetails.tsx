@@ -23,7 +23,7 @@ export default function TailorDetailsScreen() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // 🚀 Standard Booking States
+  // Standard Booking States
   const [bookingModalVisible, setBookingModalVisible] = useState(false);
   const [selectedDress, setSelectedDress] = useState<any>(null);
   const [measurementType, setMeasurementType] = useState("tailor_measure");
@@ -187,7 +187,7 @@ export default function TailorDetailsScreen() {
               </View>
               <View style={{ alignItems: "flex-end" }}>
                 <Text style={styles.priceValue}>₹{item.price}</Text>
-                {/* 🚀 THE NEW BOOK BUTTON */}
+                {/* THE NEW BOOK BUTTON */}
                 {profile.availability_status === "available" ? (
                   <TouchableOpacity
                     style={styles.bookSmallBtn}
@@ -236,7 +236,7 @@ export default function TailorDetailsScreen() {
         </View>
       </FunnyScrollView>
 
-      {/* 🚀 STANDARD BOOKING MODAL */}
+      {/* STANDARD BOOKING MODAL */}
       <Modal visible={bookingModalVisible} transparent animationType="slide">
         <SafeAreaView style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
 
-  // 🚀 New Book Button Styles
+  // New Book Button Styles
   bookSmallBtn: {
     backgroundColor: "#eff6ff",
     paddingHorizontal: 12,
@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
   reviewDate: { fontSize: 11, color: "#94a3b8", marginTop: 2, marginBottom: 6 },
   reviewBody: { fontSize: 13, color: "#475569", fontStyle: "italic" },
 
-  // 🚀 Modal Styles
+  // Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.6)",

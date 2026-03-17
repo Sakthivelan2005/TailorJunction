@@ -26,7 +26,7 @@ const URGENCY_FEES = { normal: 0, "2_day": 100, "1_day": 200 };
 export default function TailorsScreen() {
   const { userId, API_URL, socket } = useAuth();
 
-  // 🚀 Catching the dressId instead of string name
+  // Catching the dressId instead of string name
   const { dressId } = useLocalSearchParams();
   const { showToast } = useToast();
 
@@ -172,7 +172,7 @@ export default function TailorsScreen() {
       distNum: getRawDistance(t.map_link),
     }));
 
-    // 🚀 CRASH FIX: Added `|| ""` so .toLowerCase() never hits null
+    // CRASH FIX: Added `|| ""` so .toLowerCase() never hits null
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       results = results.filter(
@@ -341,7 +341,7 @@ export default function TailorsScreen() {
               : "N/A"}
           </Text>
 
-          {/* 🚀 PRICE TOGGLE: Compares specific dress price OR falls back to starting price */}
+          {/* PRICE TOGGLE: Compares specific dress price OR falls back to starting price */}
           {localDressId && tailor.specific_price ? (
             <View style={styles.highlightPrice}>
               <Text style={styles.highlightPriceText}>

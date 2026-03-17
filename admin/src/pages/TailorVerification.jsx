@@ -9,7 +9,7 @@ export default function TailorVerification() {
   useEffect(() => {
     fetchPendingTailors();
 
-    // 🚀 REAL-TIME SOCKET LISTENER
+    // REAL-TIME SOCKET LISTENER
     if (socket) {
       socket.on("newTailorRegistered", (newTailor) => {
         setPendingTailors((prev) => [newTailor, ...prev]);

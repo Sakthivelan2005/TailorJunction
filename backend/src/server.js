@@ -50,14 +50,49 @@ app.use((req, res, next) => {
   next();
 });
 
+// GLOBAL ACTIVE USER TRACKING
+const onlineUsers = {
+  customers: new Set(),
+  tailors: new Set(),
+  admins: new Set(),
+};
+
+// LIVE TRAFFIC HEARTBEAT (Runs every 5 seconds)
+setInterval(() => {
+  io.to("ADMIN_ROOM").emit("liveUserMetrics", {
+    time: new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    }),
+    customersOnline: onlineUsers.customers.size,
+    tailorsOnline: onlineUsers.tailors.size,
+    totalOnline:
+      onlineUsers.customers.size +
+      onlineUsers.tailors.size +
+      onlineUsers.admins.size,
+  });
+}, 5000);
+
 // --- SOCKET.IO CONNECTION LISTENER ---
 io.on("connection", (socket) => {
   console.log("📱 A user connected:", socket.id);
 
-  //  1. ALLOW USERS TO JOIN THEIR PRIVATE ROOMS FOR TARGETED MESSAGES
+  // 1. ALLOW USERS TO JOIN THEIR PRIVATE ROOMS AND TRACK STATUS
   socket.on("joinUserRoom", (userId) => {
     if (userId) {
       socket.join(userId);
+      socket.userId = userId; // Attach the ID to this specific socket session
+
+      // Categorize the user based on ID prefix
+      if (userId.startsWith("C")) {
+        onlineUsers.customers.add(userId);
+      } else if (userId.startsWith("T")) {
+        onlineUsers.tailors.add(userId);
+      } else {
+        onlineUsers.admins.add(userId);
+      }
+
       console.log(`User ${userId} joined their personal room.`);
     }
   });
@@ -67,14 +102,14 @@ io.on("connection", (socket) => {
     console.log(`💬 Message from ${data.sender_id}:`, data.message);
     io.to(data.receiver_id).emit("receiveMessage", data);
 
-    // 🚀 ADMIN TELEMETRY: Chat interception
+    // ADMIN TELEMETRY: Chat interception
     io.to("ADMIN_ROOM").emit("liveAdminMetrics", {
       orderValue: 0,
       message: `[COMM-LINK SECURED] Encrypted data packet routed from node ${data.sender_id} to ${data.receiver_id}.`,
     });
   });
 
-  //  2. OPTIMIZED UBER-STYLE URGENT ORDER BROADCAST
+  // 2. OPTIMIZED UBER-STYLE URGENT ORDER BROADCAST
   socket.on("requestUrgentOrder", async (data) => {
     try {
       const tempOrderId = `URG-${Date.now()}`;
@@ -93,7 +128,7 @@ io.on("connection", (socket) => {
           `Sending Urgent Order to ${eligibleTailors.length} eligible tailors.`,
         );
 
-        // 🚀 ADMIN TELEMETRY: Algorithm Broadcasting
+        // ADMIN TELEMETRY: Algorithm Broadcasting
         io.to("ADMIN_ROOM").emit("liveAdminMetrics", {
           orderValue: 0,
           message: `[ALGORITHM ENGAGED] Neural-routing protocol activated. Broadcasting dress signature <span class="text-highlight">#${data.dress_id}</span> to ${eligibleTailors.length} optimal grid nodes.`,
@@ -108,7 +143,7 @@ io.on("connection", (socket) => {
       } else {
         console.log("❌ No eligible tailors found for this urgent order.");
 
-        // 🚀 ADMIN TELEMETRY: Grid Failure
+        // ADMIN TELEMETRY: Grid Failure
         io.to("ADMIN_ROOM").emit("liveAdminMetrics", {
           orderValue: 0,
           message: `[SYSTEM ALERT] Grid saturation reached. Demand spike for dress <span class="text-highlight">#${data.dress_id}</span> failed to locate available nodes.`,
@@ -161,7 +196,7 @@ io.on("connection", (socket) => {
 
       io.emit("newOrderPlaced", { tailorId: acceptData.tailorId });
 
-      // 🚀 ADMIN TELEMETRY: Order Secured (Upgraded Vibe)
+      // ADMIN TELEMETRY: Order Secured
       io.to("ADMIN_ROOM").emit("liveAdminMetrics", {
         orderValue: acceptData.total_price,
         message: `[TRANSACTION VERIFIED] Fast-Track <span class="text-highlight">Order #${realOrderId}</span> locked by node '${acceptData.shop_name}'. Asset value secured: ₹${acceptData.total_price}.`,
@@ -171,8 +206,19 @@ io.on("connection", (socket) => {
     }
   });
 
+  // HANDLE DISCONNECTIONS (Remove them from the live count)
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
+
+    if (socket.userId) {
+      if (socket.userId.startsWith("C")) {
+        onlineUsers.customers.delete(socket.userId);
+      } else if (socket.userId.startsWith("T")) {
+        onlineUsers.tailors.delete(socket.userId);
+      } else {
+        onlineUsers.admins.delete(socket.userId);
+      }
+    }
   });
 
   socket.on("deleteExpiredChat", async ({ orderId }) => {
@@ -194,7 +240,7 @@ io.on("connection", (socket) => {
         io.emit("chatClosed", { orderId });
         console.log(`🗑️ Deleted expired chat for Order #${orderId}`);
 
-        // 🚀 ADMIN TELEMETRY: Data Purge
+        // ADMIN TELEMETRY: Data Purge
         io.to("ADMIN_ROOM").emit("liveAdminMetrics", {
           orderValue: 0,
           message: `[DATA PURGE] Security protocol 24-HR executed. Telemetry logs for <span class="text-highlight">Order #${orderId}</span> permanently scrubbed from the mainframe.`,
@@ -258,7 +304,7 @@ cron.schedule(
       if (result.affectedRows > 0) {
         io.emit("bulkStatusUpdate");
 
-        // 🚀 ADMIN TELEMETRY: System Hibernation
+        // ADMIN TELEMETRY: System Hibernation
         io.to("ADMIN_ROOM").emit("liveAdminMetrics", {
           orderValue: 0,
           message: `[CRON-SYS] Nightly cascade complete. Successfully shifted ${result.affectedRows} grid nodes into hibernation mode.`,
@@ -287,7 +333,7 @@ cron.schedule("0 * * * *", async () => {
     if (result.affectedRows > 0) {
       console.log(`✅ Deleted ${result.affectedRows} expired chat messages.`);
 
-      // 🚀 ADMIN TELEMETRY: System Cleanup
+      // ADMIN TELEMETRY: System Cleanup
       io.to("ADMIN_ROOM").emit("liveAdminMetrics", {
         orderValue: 0,
         message: `[AUTO-MAINTENANCE] Hourly cleanup routine finalized. Evaporated ${result.affectedRows} expired communication fragments from the database.`,

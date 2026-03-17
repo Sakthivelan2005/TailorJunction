@@ -14,7 +14,7 @@ import {
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { Text, TextInput } from "react-native"; // 🚀 Imported Text & TextInput
+import { Text, TextInput } from "react-native"; // Imported Text & TextInput
 import "react-native-reanimated";
 
 // This forces all Text and TextInputs to ignore the phone's accessibility font size,

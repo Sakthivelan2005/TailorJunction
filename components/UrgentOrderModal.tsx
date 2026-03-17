@@ -17,7 +17,7 @@ export default function UrgentOrderModal() {
   useEffect(() => {
     if (!socket || !userId) return;
 
-    // 🚀 1. Listen for Incoming Urgent Orders
+    // 1. Listen for Incoming Urgent Orders
     const handleIncoming = (data: any) => {
       console.log("Urgent Order Received:", data);
       setOrderData(data);
@@ -28,7 +28,7 @@ export default function UrgentOrderModal() {
       setTimeLeft(60);
     };
 
-    // 🚀 2. Listen if another tailor accepted it first!
+    // 2. Listen if another tailor accepted it first!
     const handleClose = (data: { orderId: string }) => {
       if (orderData && orderData.orderId === data.orderId) {
         setOrderData(null);

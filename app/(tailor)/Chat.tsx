@@ -34,7 +34,7 @@ export default function TailorChatScreen() {
 
     if (!socket || !userId) return;
 
-    // 🚀 EXACT MATCH TO CUSTOMER APP: Safe join function
+    // EXACT MATCH TO CUSTOMER APP: Safe join function
     const joinRoom = () => {
       const safeRoomId = String(userId).trim();
       socket.emit("joinUserRoom", safeRoomId);
@@ -59,11 +59,11 @@ export default function TailorChatScreen() {
     socket.on("receiveMessage", handleReceiveMessage);
 
     return () => {
-      // 🚀 THE FIX: Safely remove ONLY this specific listener!
+      // THE FIX: Safely remove ONLY this specific listener!
       socket.off("connect", joinRoom);
       socket.off("receiveMessage", handleReceiveMessage);
     };
-  }, [socket, orderId, userId]); // 🚀 THE FIX: Added dependencies back!
+  }, [socket, orderId, userId]); // THE FIX: Added dependencies back!
 
   const fetchChatHistory = async () => {
     try {
