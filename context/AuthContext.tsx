@@ -13,7 +13,7 @@ import React, {
 } from "react";
 import io, { Socket } from "socket.io-client";
 
-const API_URL = "http://192.168.1.7:3001";
+const API_URL = "http://192.168.1.12:3001";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const ShopDetailsContext = createContext<ShopDetailsType | undefined>(
@@ -109,7 +109,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     const timeoutId = setTimeout(() => controller.abort(), 15000);
 
     try {
-      console.log("🚀 Calling backend signup:", signupData);
+      console.log("Calling backend signup:", signupData);
 
       const response = await fetch(`${API_URL}/api/signup`, {
         method: "POST",

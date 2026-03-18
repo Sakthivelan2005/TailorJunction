@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { io } from "socket.io-client";
 
-const API_URL = "http://192.168.1.7:3001"; // Must match your Node.js backend IP
+const API_URL = "http://192.168.1.12:3001"; // Must match your Node.js backend IP
 const AdminAuthContext = createContext(null);
 
 export const AdminAuthProvider = ({ children }) => {
